@@ -57,14 +57,13 @@ export default function HomePage() {
 
     try {
       // Fazer requisição ao backend
-      const response = await fetch('/api/chat', {
+      const response = await fetch('/api/chat/public', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          content: message,
-          language: 'pt-BR',
+          message,
         }),
       });
 
@@ -78,7 +77,7 @@ export default function HomePage() {
       setMessages((prev) => 
         prev.filter((m) => m.id !== loadingMessageId).concat({
           id: `msg-${Date.now()}`,
-          content: data.reply || data.content,
+          content: data.response || data.reply || data.content,
           isUser: false,
           timestamp: new Date(),
         })

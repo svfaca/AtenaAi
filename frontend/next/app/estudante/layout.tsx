@@ -9,6 +9,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { isStudent } from "@/lib/auth";
+import { ScholarProvider } from "@/lib/contexts/ScholarContext";
 
 interface Props {
   children: ReactNode;
@@ -27,8 +28,10 @@ export default async function EstudanteLayout({ children }: Props) {
   }
 
   return (
-    <div className="flex flex-1 w-full overflow-hidden">
-      {children}
-    </div>
+    <ScholarProvider initialConversation={null}>
+      <div className="flex flex-1 w-full overflow-hidden">
+        {children}
+      </div>
+    </ScholarProvider>
   );
 }
