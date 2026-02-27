@@ -58,8 +58,9 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[/api/auth/me] Error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch user' },
-      { status: 500 }
+      { error: 'Not authenticated' },
+      { status: 401 }
     );
   }
 }
+
