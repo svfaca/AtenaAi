@@ -1,0 +1,87 @@
+import { persistAuth, loadPersistedAuth, clearPersistedAuth } from "./core/auth.js";
+
+const state = {
+  user: null,
+  token: null,
+  role: null,
+  route: "/",
+  modal: null
+};
+
+const listeners = [];
+
+export function getState() {
+  return state;
+}
+
+export function setState(newState) {
+  Object.assign(state, newState);
+
+  if (newState.user) {
+    console.log("[📦 STORE] Usuario setado:", newState.user.role);
+  }
+  if (newState.role) {
+    console.log("[📦 STORE] Role setada:", newState.role);
+  }
+
+  // ⚠️ DEPRECATED: Persistência via localStorage removida
+  // Tokens agora usam HttpOnly cookies (automático via credentials: 'include')
+  // Deixar comentado para histórico, mas NÃO chamar mais essas funções
+  
+  // if (newState.token && newState.user) {
+  //   persistAuth({ token: state.token, user: state.user });
+  // }
+  // if (newState.token === null) {
+  //   clearPersistedAuth();
+  // }
+
+  listeners.forEach((listener) => listener(state));
+}
+
+export function hydrateAuth() {
+  // ⚠️ DEPRECATED: Hydration via localStorage removida
+  // O guard.js agora hidrata via cookies automaticamente
+  // Esta função é mantida apenas para compatibilidade legada
+  return null;
+}
+
+export function subscribe(listener) {
+  listeners.push(listener);
+  return () => {
+    const index = listeners.indexOf(listener);
+    if (index > -1) {
+      listeners.splice(index, 1);
+    }
+  };
+}
+
+export function logout() {
+  setState({
+    user: null,
+    token: null,
+    role: null,
+    modal: null
+  });
+
+  window.history.pushState({}, "", "/");
+}
+
+export function openModal(name) {
+  setState({ modal: name });
+}
+
+export function closeModal() {
+  setState({ modal: null });
+}
+
+export function isTeacher(state = getState()) {
+  return state?.role === "teacher";
+}
+
+export function isStudent(state = getState()) {
+  return state?.role === "student";
+}
+
+export function isAdmin(state = getState()) {
+  return state?.role === "admin";
+}
