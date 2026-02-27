@@ -43,7 +43,7 @@ export function PublicHeader() {
             alt="AtenaAI" 
             className="h-8 w-8 mr-2"
           />
-          <span className="hidden sm:inline">AtenaAI</span>
+          <span>AtenaAI</span>
         </Link>
       </div>
 
