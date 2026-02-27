@@ -1,15 +1,16 @@
 /**
  * ⌨️ MessageInput
- * 
+ *
  * Client Component
  * - Input para digitar mensagens
  * - Auto-resize do textarea
  * - Envio com Enter ou botão
  */
 
-"use client";
+'use client';
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback } from 'react';
+import { useMessageComposer } from '@/lib/hooks/useMessageComposer';
 
 interface Props {
   onSendMessage: (message: string) => Promise<void> | void;
@@ -17,51 +18,27 @@ interface Props {
 }
 
 export function MessageInput({ onSendMessage, disabled }: Props) {
-  const [message, setMessage] = useState("");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { message, setMessage, textareaRef, handleSend, isSending } = useMessageComposer({
+    onSendMessage,
+    disabled,
+    maxHeight: 128,
+    clearBeforeSend: true,
+    restoreOnError: true,
+  });
 
-  // Auto-resize textarea
-  const handleInput = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setMessage(e.target.value);
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 128) + "px";
-    }
-  }, []);
-
-  // Enviar ao apertar Ctrl+Enter ou Cmd+Enter
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && !disabled) {
-        handleSend();
-      }
-    },
-    [disabled]
-  );
-
-  const handleSend = useCallback(async () => {
-    if (!message.trim() || disabled) return;
-
-    const content = message;
-    setMessage("");
-
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
-
+  const onSend = useCallback(async () => {
     try {
-      await onSendMessage(content);
+      await handleSend();
     } catch (error) {
-      console.error("Erro ao enviar mensagem:", error);
-      setMessage(content); // Restaurar mensagem em caso de erro
+      console.error('Erro ao enviar mensagem:', error);
     }
-  }, [message, disabled, onSendMessage]);
+  }, [handleSend]);
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        handleSend();
+        void onSend();
       }}
       className="flex gap-2 items-end"
     >
@@ -79,10 +56,14 @@ export function MessageInput({ onSendMessage, disabled }: Props) {
         <textarea
           ref={textareaRef}
           value={message}
-          onChange={handleInput}
-          onKeyDown={handleKeyDown}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={(e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !disabled) {
+              void onSend();
+            }
+          }}
           placeholder="Mensagem..."
-          disabled={disabled}
+          disabled={disabled || isSending}
           rows={1}
           className="flex-1 px-3 py-2.5 rounded-lg border border-slate-300 bg-slate-50 text-sm text-slate-900 placeholder-slate-400 outline-none transition resize-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed max-h-24 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500 w-full"
         />
@@ -99,7 +80,7 @@ export function MessageInput({ onSendMessage, disabled }: Props) {
 
       <button
         type="submit"
-        disabled={disabled || !message.trim()}
+        disabled={disabled || isSending || !message.trim()}
         className="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 font-medium"
         title="Enviar (Ctrl+Enter)"
       >
