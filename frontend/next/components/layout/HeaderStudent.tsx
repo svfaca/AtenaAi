@@ -73,7 +73,7 @@ export default function HeaderStudent({ session }: { session: Session }) {
             alt="AtenaAI" 
             className="h-8 w-8"
           />
-          <span className="hidden sm:inline">AtenaAI</span>
+          <span>AtenaAI</span>
         </a>
 
         {/* Badge Estudante */}

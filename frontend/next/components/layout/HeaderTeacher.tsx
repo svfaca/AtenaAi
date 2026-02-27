@@ -68,7 +68,7 @@ export default function HeaderTeacher({ session }: { session: Session }) {
             alt="AtenaAI" 
             className="h-8 w-8"
           />
-          <span className="hidden sm:inline">AtenaAI</span>
+          <span>AtenaAI</span>
         </a>
         <span className="px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full font-medium">
           Professor

@@ -44,22 +44,22 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
   // Função para carregar usuário do backend (via cookies + credentials)
   const loadUserFromBackend = async (): Promise<boolean> => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-      
-      const res = await fetch(`${apiUrl}/api/v1/auth/me`, {
-        credentials: "include", // 🔑 Envia cookies automaticamente
+      const res = await fetch('/api/auth/me', {
+        credentials: 'include', // 🔑 Envia cookies automaticamente
       });
 
-      if (res.ok) {
-        const userData = await res.json();
-        setUser(userData);
-        return true;
-      } else {
+      if (!res.ok) {
         setUser(null);
         return false;
       }
+
+      const payload = await res.json();
+      const userData = payload?.user ?? payload;
+
+      setUser(userData);
+      return true;
     } catch (err) {
-      console.error("[AuthContext] Erro ao carregar usuário:", err);
+      console.error('[AuthContext] Erro ao carregar usuário:', err);
       setUser(null);
       return false;
     }
