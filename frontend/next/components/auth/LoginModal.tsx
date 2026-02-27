@@ -23,13 +23,15 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
     e.preventDefault();
     setIsLoading(true);
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     try {
       console.log('[LoginModal] Starting login...');
       
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: normalizedEmail, password }),
         credentials: 'include', // ensure Set-Cookie from server is accepted by browser
       });
 
@@ -58,7 +60,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
       // Redirecionar para dashboard baseado no role
       const dashboardMap: Record<string, string> = {
         scholar: '/scholar',
-        student: '/scholar',
+        student: '/estudante',
         teacher: '/teacher',
         professor: '/teacher',
         admin: '/admin',
