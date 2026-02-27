@@ -4,9 +4,10 @@ import type { LoginRequest, AuthUser } from '@/lib/types/auth';
 export async function POST(request: NextRequest) {
   try {
     const body: LoginRequest = await request.json();
+    const normalizedEmail = body.email?.trim().toLowerCase();
 
     // Validar input
-    if (!body.email || !body.password) {
+    if (!normalizedEmail || !body.password) {
       return NextResponse.json(
         { message: 'Email e senha são obrigatórios' },
         { status: 400 }
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
     
     // Enviar como form-data para OAuth2PasswordRequestForm
     const formData = new URLSearchParams();
-    formData.append('username', body.email);
+    formData.append('username', normalizedEmail);
     formData.append('password', body.password);
 
     console.log('[Auth] Calling backend:', `${backendUrl}/api/v1/auth/login`);
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
     const result = NextResponse.json({
       user: {
         id: data.user?.id || 'unknown',
-        email: data.user?.email || body.email,
+        email: data.user?.email || normalizedEmail,
         name: data.user?.full_name || data.user?.name || 'Usuário',
         role: data.user?.role || 'student',
       },
