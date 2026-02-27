@@ -7,46 +7,47 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { message, conversationId } = body;
+    const { message, conversationId, history, language } = body;
 
-    if (!message) {
+    if (!message || !String(message).trim()) {
       return NextResponse.json(
         { error: 'Mensagem não pode estar vazia' },
         { status: 400 }
       );
     }
 
-    // Fazer chamada ao backend FastAPI
+    // Backend FastAPI usa /api/v1/chat com suporte a visitante
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-    const response = await fetch(`${backendUrl}/api/chat/public`, {
+    const response = await fetch(`${backendUrl}/api/v1/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        message,
+        content: message,
+        language: language || 'pt-BR',
         conversation_id: conversationId,
+        history,
       }),
     });
 
+    // Mantém chat público resiliente mesmo com falha no backend
     if (!response.ok) {
-      // Se o backend não está disponível, retorna uma resposta padrão
-      if (!response.ok) {
-        return NextResponse.json(
-          {
-            response: `Desculpe, não consegui processar sua pergunta no momento. Verifique a conexão ou tente novamente mais tarde.`,
-          },
-          { status: 200 }
-        );
-      }
+      return NextResponse.json(
+        {
+          response:
+            'Desculpe, não consegui processar sua pergunta no momento. Verifique a conexão ou tente novamente mais tarde.',
+        },
+        { status: 200 }
+      );
     }
 
     const data = await response.json();
 
     return NextResponse.json({
-      response: data.response || data.message || 'Mensagem recebida',
-      conversationId,
+      response: data.reply || data.response || data.message || 'Mensagem recebida',
+      conversationId: data.conversation_id || conversationId,
     });
   } catch (error) {
     console.error('Erro no endpoint de chat público:', error);
@@ -54,9 +55,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         response: 'Ocorreu um erro ao processar sua mensagem. Tente novamente.',
-        error: error instanceof Error ? error.message : 'Unknown error',
       },
-      { status: 500 }
+      { status: 200 }
     );
   }
 }
