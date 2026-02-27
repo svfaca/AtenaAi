@@ -30,8 +30,9 @@ BASE_URL = "http://127.0.0.1:8000"
 # ============================
 IS_PRODUCTION = os.getenv("ENVIRONMENT") == "production"
 COOKIE_SECURE = IS_PRODUCTION  # HttpOnly cookies only on HTTPS in production
-# Em dev: "none" para permitir requisições cross-port; Em prod: "lax" para CSRF protection
-COOKIE_SAMESITE = "lax" if IS_PRODUCTION else "none"
+# Em dev: "lax" para compatibilidade com navegadores (SameSite=None exige Secure=true)
+# Em prod: também "lax" para reduzir risco de CSRF mantendo o fluxo de autenticação
+COOKIE_SAMESITE = "lax"
 COOKIE_DOMAIN = None  # None = current domain
 
 # ============================
