@@ -3,7 +3,7 @@
 import { useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Conversation } from '@/lib/types'
-import { useChatStore } from '@/lib/stores/useChatStore'
+import { useChatStore } from '@/stores/useChatStore'
 import ConversationMenu from './ConversationMenu'
 
 export interface ConversationItemProps {

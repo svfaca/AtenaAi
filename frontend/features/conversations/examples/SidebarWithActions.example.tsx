@@ -9,7 +9,7 @@
 
 import { useSWRConfig } from 'swr';
 import { toast } from 'sonner';
-import { useUIStore, useChatStore } from '@/lib/stores';
+import { useUIStore, useChatStore } from '@/stores';
 import { useConversations } from '@/features/conversations/hooks/useConversations';
 import {
   createConversation,

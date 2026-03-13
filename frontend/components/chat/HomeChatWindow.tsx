@@ -4,7 +4,7 @@ import { usePublicChat } from '@/features/chat/hooks/usePublicChat';
 import { useLimitTimer } from '@/lib/hooks/useLimitTimer';
 import MessageList from '@/features/chat/components/MessageList';
 import MessageInput from '@/features/chat/components/MessageInput';
-import Footer from '@/components/layout/Footer';
+import Footer from '@/shared/layout/Footer';
 
 function formatRemainingTime(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));

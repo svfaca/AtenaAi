@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useChatStore } from '@/lib/stores/useChatStore'
+import { useChatStore } from '@/stores/useChatStore'
 import SidebarSection from '../SidebarSection'
 import ConversationItem from './ConversationItem'
 

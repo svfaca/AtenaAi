@@ -1,2 +1,2 @@
-export { useChatStore } from '@/lib/stores/useChatStore'
+export { useChatStore } from './useChatStore'
 export { useUIStore, useAppUI } from '@/lib/hooks/useAppUI'

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import type { Conversation } from '@/lib/types'
-import { useChatStore } from '@/lib/stores/useChatStore'
+import { useChatStore } from '@/stores/useChatStore'
 
 export interface ConversationMenuProps {
   conversation: Conversation

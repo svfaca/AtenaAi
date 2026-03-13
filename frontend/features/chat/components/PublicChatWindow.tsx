@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
-import PublicFooter from '@/components/layout/PublicFooter';
+import PublicFooter from '@/shared/layout/PublicFooter';
 import { LoginModal, SignupModal, useAuth } from '@/features/auth';
 import { streamPublicMessage, type ChatRateLimitError } from '../services/chat.service';
 import type { ChatMessage } from '../types/chat.types';

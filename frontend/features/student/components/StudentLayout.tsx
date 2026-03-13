@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useThemeMode } from '@/lib/hooks/useThemeMode';
 import { useUIStore } from '@/stores';
 import { useAuth } from '@/features/auth';
-import AppShell from '@/components/layout/AppShell';
+import AppShell from '@/shared/layout/AppShell';
 import StudentSidebar from './StudentSidebar';
 import SettingsSidebar from './SettingsSidebar';
 

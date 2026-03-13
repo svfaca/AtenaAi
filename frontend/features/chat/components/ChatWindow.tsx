@@ -1,6 +1,6 @@
 'use client'
 
-import PublicFooter from '@/components/layout/PublicFooter'
+import PublicFooter from '@/shared/layout/PublicFooter'
 import { useChat } from '../hooks/useChat'
 import MessageInput from './MessageInput'
 import MessageList from './MessageList'

@@ -1,6 +1,6 @@
 "use client"
 
-import { Modal } from "@/components/ui/Modal"
+import { Modal } from "@/shared/ui/Modal"
 import { LoginForm } from "./LoginForm"
 
 type Props = {

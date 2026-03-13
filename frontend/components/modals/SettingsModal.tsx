@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/features/auth";
 import { deleteAccount } from "@/features/auth/services/auth.service";
-import { useChatStore } from "@/lib/stores";
+import { useChatStore } from "@/stores";
 import { useRouter } from "next/navigation";
 import { INTERESTS, getInterestLabel, normalizeInterestIds } from "@/lib/constants/interests";
 

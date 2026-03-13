@@ -1,6 +1,6 @@
 'use client';
 
-import PublicHeader from '@/components/layout/PublicHeader';
+import PublicHeader from '@/shared/layout/PublicHeader';
 import ChatWindow from '@/features/chat/components/ChatWindow';
 import PublicChatWindow from '@/features/chat/components/PublicChatWindow';
 import { useAuth } from '@/features/auth';

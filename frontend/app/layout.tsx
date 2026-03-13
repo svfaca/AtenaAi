@@ -1,6 +1,6 @@
 import { Toaster } from 'sonner';
 import { AuthProvider } from '@/features/auth';
-import ThemeToggle from '@/components/ui/ThemeToggle';
+import ThemeToggle from '@/shared/ui/ThemeToggle';
 import '@/styles/globals.css';
 
 export default function RootLayout({
