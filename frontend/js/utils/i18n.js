@@ -57,7 +57,7 @@ function getI18nBasePath() {
         const loc = window.location.pathname.toLowerCase();
         let relPath = '../i18n/';
         
-        if (loc.includes('/quem-somos/') || loc.includes('/cadastro/') || 
+        if (loc.includes('/quem-somos/') || 
             loc.includes('/login/') || loc.includes('/estudante/') || 
             loc.includes('/professor/')) {
             relPath = '../i18n/';
@@ -112,7 +112,7 @@ async function loadLanguage(lang) {
             
             // Prioridade 2: Caminhos relativos
             pathsToTry.push(`./i18n/${lang}.json`);      // Se estiver no root (/frontend/)
-            pathsToTry.push(`../i18n/${lang}.json`);     // De /frontend/cadastro/, /frontend/login/, etc.
+            pathsToTry.push(`../i18n/${lang}.json`);     // De /frontend/login/, etc.
             pathsToTry.push(`../../i18n/${lang}.json`);  // Se estiver mais profundo
         } else {
             // Se é file://, usa os caminhos relativos detectados

@@ -1,6 +1,6 @@
 'use client';
 
-import Header from './Header';
+import Header from '@/shared/layout/Header';
 import HeaderTeacher from './HeaderTeacher';
 import HeaderStudent from './HeaderStudent';
 import type { Session } from '@/lib/types/auth';

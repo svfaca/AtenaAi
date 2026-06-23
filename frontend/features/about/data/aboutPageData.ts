@@ -20,9 +20,9 @@ export const aboutPageData = {
       subtitle:
         'A AtenaAI e uma plataforma educacional conversacional que combina tutoria inteligente, trilhas adaptativas e contexto de sala de aula para apoiar alunos e professores no processo de aprendizagem.',
       primaryActionLabel: 'Comecar agora',
-      primaryActionHref: '/cadastro',
+      primaryActionHref: '#signup',
       secondaryActionLabel: 'Explorar a plataforma',
-      secondaryActionHref: '/',
+      secondaryActionHref: '#about-problem-section',
     } as AboutHeroContent,
     problem: [
       {
@@ -89,7 +89,7 @@ export const aboutPageData = {
     ctaTitle: 'Descubra uma nova forma de aprender com inteligencia artificial.',
     ctaDescription: 'Comece hoje e veja como o aprendizado conversacional acelera sua evolucao.',
     ctaPrimaryLabel: 'Criar conta',
-    ctaPrimaryHref: '/cadastro',
+    ctaPrimaryHref: '#signup',
   },
   user: {
     title: 'Sobre a AtenaAI',
@@ -139,6 +139,6 @@ export const aboutPageData = {
     importantTip:
       'A IA funciona melhor quando voce explica sua duvida, mostra seu raciocinio e pede exemplos ou exercicios.',
     ctaLabel: 'Comecar conversa',
-    ctaHref: '/',
+    ctaHref: '/scholar',
   },
 }
