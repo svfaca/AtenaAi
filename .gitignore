@@ -56,4 +56,19 @@ backend/storage/
 
 # ===== Git safe script =====
 git-safe.ps1
-frontend/.next/dev/cache/turbopack/23c46498/00000006.meta
+
+# ===== Legacy frontend (removed in cleanup-legacy) =====
+frontend/index.html
+frontend/login/
+frontend/cadastro/
+frontend/chat/
+frontend/quem-somos/
+frontend/js/
+frontend/_legacy/
+frontend/logo/
+frontend/assets/
+assets/
+
+# ===== Runtime files =====
+test_output.log
+backend/backend.log
