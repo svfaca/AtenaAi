@@ -6,7 +6,7 @@ type AboutProblemProps = {
 
 export function AboutProblem({ items }: AboutProblemProps) {
   return (
-    <section className="py-20">
+    <section id="about-problem-section" className="py-20">
       <div className="mx-auto max-w-[1200px] px-6">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">O problema da aprendizagem tradicional</h2>
         <div className="mt-8 grid gap-6 md:grid-cols-3">

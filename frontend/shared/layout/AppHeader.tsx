@@ -41,8 +41,7 @@ export default function AppHeader({
             alt="AtenaAI"
             width={32}
             height={32}
-            className="mr-2"
-            style={{ width: 'auto', height: 'auto' }}
+            className="mr-2 h-8 w-auto object-contain"
           />
           AtenaAI
         </Link>

@@ -14,10 +14,10 @@ interface ScholarContextType {
 const ScholarContext = createContext<ScholarContextType | undefined>(undefined);
 
 export function ScholarProvider({ children, ...value }: ScholarContextType & { children: ReactNode }) {
-  const contextValue = value;
+  const { children: _, ...contextValue } = { ...value };
   
   return (
-    <ScholarContext.Provider value={contextValue}>
+    <ScholarContext.Provider value={contextValue as ScholarContextType}>
       {children}
     </ScholarContext.Provider>
   );

@@ -22,7 +22,7 @@ import { getState, setState } from "../store.js";
   // ========================
   // CONFIGURAÇÃO DE ROTAS
   // ========================
-  const PUBLIC_ROUTES = ["/", "/login", "/cadastro", "/quem-somos"];
+  const PUBLIC_ROUTES = ["/", "/login", "/quem-somos"];
   
   const PROTECTED_ROUTES = {
     "/estudante": ["student"],

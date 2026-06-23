@@ -1,5 +1,6 @@
 'use client';
 
+import Header from '@/shared/layout/Header';
 import HeaderTeacher from './HeaderTeacher';
 import HeaderStudent from './HeaderStudent';
 import type { Session } from '@/lib/types/auth';
@@ -26,5 +27,5 @@ export default function RoleBasedHeader({ session }: RoleBasedHeaderProps) {
   }
 
   // Default para outras roles (admin, etc)
-  return <HeaderTeacher session={session} />;
+  return <Header session={session} />;
 }

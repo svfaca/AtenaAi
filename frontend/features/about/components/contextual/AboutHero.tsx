@@ -4,9 +4,16 @@ import type { AboutHeroContent } from '../../data/aboutPageData'
 type AboutHeroProps = {
   content: AboutHeroContent
   showMockup?: boolean
+  onPrimaryActionClick?: () => void
+  onSecondaryActionClick?: () => void
 }
 
-export function AboutHero({ content, showMockup = false }: AboutHeroProps) {
+export function AboutHero({
+  content,
+  showMockup = false,
+  onPrimaryActionClick,
+  onSecondaryActionClick,
+}: AboutHeroProps) {
   return (
     <section className="py-20">
       <div className="mx-auto grid max-w-[1200px] gap-10 px-6 lg:grid-cols-2 lg:items-center">
@@ -17,6 +24,12 @@ export function AboutHero({ content, showMockup = false }: AboutHeroProps) {
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
               href={content.primaryActionHref}
+              onClick={(event) => {
+                if (onPrimaryActionClick) {
+                  event.preventDefault()
+                  onPrimaryActionClick()
+                }
+              }}
               className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
             >
               {content.primaryActionLabel}
@@ -24,6 +37,12 @@ export function AboutHero({ content, showMockup = false }: AboutHeroProps) {
             {content.secondaryActionLabel && content.secondaryActionHref ? (
               <Link
                 href={content.secondaryActionHref}
+                onClick={(event) => {
+                  if (onSecondaryActionClick) {
+                    event.preventDefault()
+                    onSecondaryActionClick()
+                  }
+                }}
                 className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 {content.secondaryActionLabel}

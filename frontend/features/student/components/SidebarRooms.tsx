@@ -10,8 +10,8 @@ type SidebarRoomsProps = {
   onSearchQueryChange: (query: string) => void;
   isCollapsed: boolean;
   onJoinRoom: () => void;
-  onLeaveRoom: (roomId: string | number) => void;
-  onOpenRoom: (roomId: string | number) => void;
+  onLeaveRoom: (roomId: string) => void;
+  onOpenRoom: (roomId: string) => void;
 };
 
 export default function SidebarRooms({
@@ -23,13 +23,13 @@ export default function SidebarRooms({
   onLeaveRoom,
   onOpenRoom,
 }: SidebarRoomsProps) {
-  const [activeMenuId, setActiveMenuId] = useState<string | number | null>(null);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useClickOutside(menuRef, () => setActiveMenuId(null));
 
-  const toggleMenu = useCallback((roomId: string | number, event: React.MouseEvent<HTMLButtonElement>) => {
+  const toggleMenu = useCallback((roomId: string, event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
     
     if (activeMenuId === roomId) {
@@ -48,7 +48,7 @@ export default function SidebarRooms({
     setActiveMenuId(roomId);
   }, [activeMenuId]);
 
-  const handleLeaveRoom = (roomId: string | number) => {
+  const handleLeaveRoom = (roomId: string) => {
     onLeaveRoom(roomId);
     setActiveMenuId(null);
   };

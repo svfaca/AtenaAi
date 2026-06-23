@@ -9,9 +9,10 @@ type AboutCTAProps = {
   title: string
   description?: string
   actions: AboutCTAAction[]
+  onActionClick?: () => void
 }
 
-export function AboutCTA({ title, description, actions }: AboutCTAProps) {
+export function AboutCTA({ title, description, actions, onActionClick }: AboutCTAProps) {
   return (
     <section className="py-20">
       <div className="mx-auto max-w-[1200px] px-6">
@@ -24,6 +25,12 @@ export function AboutCTA({ title, description, actions }: AboutCTAProps) {
               <Link
                 key={`${action.label}-${action.href}`}
                 href={action.href}
+                onClick={(event) => {
+                  if (onActionClick) {
+                    event.preventDefault()
+                    onActionClick()
+                  }
+                }}
                 className={
                   index === 0
                     ? 'rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700'

@@ -175,7 +175,7 @@ function PublicVariantHeader() {
             Entrar
           </Link>
           <Link
-            href="/cadastro"
+            href="/"
             className="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
           >
             Criar Conta
@@ -221,7 +221,7 @@ function PublicVariantHeader() {
               Entrar
             </Link>
             <Link
-              href="/cadastro"
+              href="/"
               className="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-4 py-2 rounded-md text-sm font-medium text-center"
             >
               Criar Conta
