@@ -44,7 +44,7 @@ RUN mkdir -p uploads
 EXPOSE 8000
 
 # Comando para desenvolvimento (com hot-reload)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --reload"]
 
 # ====================================
 # Stage 4: Production
@@ -67,4 +67,4 @@ USER appuser
 EXPOSE 8000
 
 # Comando para produção (otimizado)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${UVICORN_WORKERS:-4}"]

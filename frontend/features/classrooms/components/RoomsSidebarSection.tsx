@@ -107,14 +107,19 @@ export default function RoomsSidebarSection({
     }
   };
 
-  const handleLeaveRoom = (roomId: string) => {
-    setRoomIdToLeave(roomId);
+  const handleLeaveRoom = (roomId: string | number) => {
+    setRoomIdToLeave(String(roomId));
     setLeaveError(null);
     setIsLeaveModalOpen(true);
   };
 
-  const handleOpenRoom = (roomId: string) => {
-    const targetRoom = rooms.find((room) => room.id === roomId);
+  const handleOpenRoom = (roomId: string | number) => {
+    const normalizedRoomId = String(roomId);
+    const targetRoom = rooms.find((room) => String(room.id) === normalizedRoomId);
+    if (!targetRoom) {
+      return;
+    }
+
     if (targetRoom?.status === 'pending') {
       errorToast('Essa sala ainda esta aguardando aprovacao.');
       return;
@@ -122,10 +127,9 @@ export default function RoomsSidebarSection({
 
     closeAbout();
     openClassroom({
-      id: targetRoom.id,
+      id: String(targetRoom.id),
       name: targetRoom.name,
       code: targetRoom.code,
-      description: targetRoom.description,
       role: 'student',
     });
   };
@@ -145,7 +149,7 @@ export default function RoomsSidebarSection({
       return;
     }
 
-    const targetRoom = rooms.find((room) => room.id === roomIdToLeave);
+    const targetRoom = rooms.find((room) => String(room.id) === roomIdToLeave);
     const isPendingRoom = targetRoom?.status === 'pending';
     const endpoint = isPendingRoom
       ? `/api/classrooms/${roomIdToLeave}/cancel-request`
@@ -192,7 +196,7 @@ export default function RoomsSidebarSection({
     ? rooms.filter((room) => room.name.toLowerCase().includes(normalizedQuery))
     : rooms;
   const selectedRoom = roomIdToLeave
-    ? rooms.find((room) => room.id === roomIdToLeave)
+    ? rooms.find((room) => String(room.id) === roomIdToLeave)
     : null;
   const isPendingSelection = selectedRoom?.status === 'pending';
 

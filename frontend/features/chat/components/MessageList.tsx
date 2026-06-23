@@ -7,7 +7,7 @@ import AtenaLimitMessage from './AtenaLimitMessage';
 interface Message {
   id: string | number;
   content: string;
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant' | 'system' | string;
   timestamp?: Date;
 }
 

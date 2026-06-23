@@ -9,7 +9,7 @@ interface User {
   email: string;
   role: string;
   profile_image?: string;
-  interests?: string[];
+  interests?: string[] | string;
   birth_date?: string;
   gender?: string;
 }
