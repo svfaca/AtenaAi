@@ -14,15 +14,8 @@ export function PublicHeader() {
     <header className="h-16 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 shrink-0 bg-white dark:bg-gray-900 z-10">
       <div className="flex items-center gap-3">
         <Link href="/" className="flex items-center text-xl font-bold hover:opacity-80 transition-opacity">
-          <img
-            src={theme === 'dark' ? '/logo/logo-icon-dark.png' : '/logo/logo-icon-ligth.png'}
-            alt="AtenaAI"
-            className="h-8 w-8 mr-2"
-          />
-          <span>AtenaAI</span>
-        </Link>
-      </div>
 
+            <button
       <div className="flex items-center gap-2">
         <button
           onClick={toggleTheme}
@@ -42,9 +35,6 @@ export function PublicHeader() {
         </button>
 
         <div className="hidden md:flex items-center gap-2">
-          <Link href="/about" className="text-sm font-medium hover:underline px-2 text-gray-700 dark:text-gray-300">
-            Quem somos
-          </Link>
           <div className="flex items-center gap-2">
             <button
               onClick={openLogin}

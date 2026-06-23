@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 const ACCESS_TOKEN_COOKIE = 'access_token';
 
 // Rotas públicas que não requerem autenticação
-const PUBLIC_PATHS = ['/about', '/'];
+const PUBLIC_PATHS = ['/'];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
