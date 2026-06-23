@@ -1,10 +1,11 @@
 'use client';
 
-import PublicHeader from '@/shared/layout/PublicHeader';
+import PublicLayout from '@/features/public/components/PublicLayout';
 import ChatWindow from '@/features/chat/components/ChatWindow';
 import PublicChatWindow from '@/features/chat/components/PublicChatWindow';
 import { useAuth } from '@/features/auth';
 import StudentArea from '@/features/student/components/StudentArea';
+import { TeacherPageClient } from '@/features/teacher';
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -20,10 +21,13 @@ export default function HomePage() {
     );
   }
 
+  if (user?.role === 'teacher') {
+    return <TeacherPageClient />;
+  }
+
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden" suppressHydrationWarning>
-      <PublicHeader />
+    <PublicLayout>
       <PublicChatWindow />
-    </div>
+    </PublicLayout>
   );
 }

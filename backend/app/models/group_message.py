@@ -17,5 +17,5 @@ class GroupMessage(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     
     # Relações
-    classroom = relationship("Classroom", backref="messages")
-    user = relationship("User", backref="group_messages")
+    classroom = relationship("Classroom", backref="group_classroom_messages")
+    user = relationship("User", back_populates="group_messages")

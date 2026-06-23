@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/features/auth';
-import { SettingsModal } from '@/components/modals/SettingsModal';
+import { useAboutModal } from '@/features/about';
+import SettingsSidebar from '@/features/student/components/SettingsSidebar';
 
 type SidebarFooterProps = {
   isCollapsed: boolean;
@@ -12,9 +12,11 @@ type SidebarFooterProps = {
 };
 
 export default function SidebarFooter({ isCollapsed, onOpenSettings }: SidebarFooterProps) {
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const [isLocalSettingsOpen, setIsLocalSettingsOpen] = useState(false);
+  const { logout } = useAuth();
   const router = useRouter();
+  const { isOpen: isAboutOpen, openAbout, closeAbout } = useAboutModal();
+  const handleAboutClick = () => (isAboutOpen ? closeAbout() : openAbout());
 
   const handleLogout = async () => {
     try {
@@ -29,9 +31,10 @@ export default function SidebarFooter({ isCollapsed, onOpenSettings }: SidebarFo
   const handleOpenSettings = () => {
     if (onOpenSettings) {
       onOpenSettings();
-    } else {
-      setSettingsOpen(true);
+      return;
     }
+
+    setIsLocalSettingsOpen(true);
   };
 
   return (
@@ -40,10 +43,10 @@ export default function SidebarFooter({ isCollapsed, onOpenSettings }: SidebarFo
         <nav className="space-y-1">
           {isCollapsed ? (
             <>
-              <Link
-                href="/quem-somos"
+              <button
+                onClick={handleAboutClick}
                 className="flex justify-center rounded-lg p-2 text-gray-700 transition-colors hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700"
-                aria-label="Quem somos"
+                aria-label={isAboutOpen ? 'Fechar' : 'Sobre'}
               >
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -53,7 +56,7 @@ export default function SidebarFooter({ isCollapsed, onOpenSettings }: SidebarFo
                     strokeWidth={2}
                   />
                 </svg>
-              </Link>
+              </button>
               <button
                 onClick={handleOpenSettings}
                 className="flex w-full justify-center rounded-lg p-2 text-gray-700 transition-colors hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700"
@@ -91,9 +94,9 @@ export default function SidebarFooter({ isCollapsed, onOpenSettings }: SidebarFo
             </>
           ) : (
             <>
-              <Link
-                href="/quem-somos"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-200 hover:text-blue-700 dark:text-gray-200 dark:hover:bg-gray-700 dark:hover:text-blue-400"
+              <button
+                onClick={handleAboutClick}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-200 hover:text-blue-700 dark:text-gray-200 dark:hover:bg-gray-700 dark:hover:text-blue-400"
               >
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -103,8 +106,8 @@ export default function SidebarFooter({ isCollapsed, onOpenSettings }: SidebarFo
                     strokeWidth={2}
                   />
                 </svg>
-                <span>Quem somos</span>
-              </Link>
+                <span>{isAboutOpen ? 'Fechar' : 'Sobre'}</span>
+              </button>
               <button
                 onClick={handleOpenSettings}
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-200 hover:text-blue-700 dark:text-gray-200 dark:hover:bg-gray-700 dark:hover:text-blue-400"
@@ -144,10 +147,11 @@ export default function SidebarFooter({ isCollapsed, onOpenSettings }: SidebarFo
         </nav>
       </div>
 
-      <SettingsModal
-        isOpen={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
+      <SettingsSidebar
+        open={isLocalSettingsOpen}
+        onClose={() => setIsLocalSettingsOpen(false)}
       />
+
     </>
   );
 }

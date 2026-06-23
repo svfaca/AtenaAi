@@ -2,9 +2,9 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { toast } from "sonner"
 import { SignupFormData } from "../../types/auth.types"
 import { useAuth } from "@/features/auth"
+import { useNotification } from "@/lib/hooks/useNotification"
 import * as authService from "../../services/auth.service"
 import { INTERESTS, getInterestLabel } from "@/lib/constants/interests"
 
@@ -23,6 +23,7 @@ export function SignupStepInterests({
 }: Props) {
   const router = useRouter()
   const { login } = useAuth()
+  const { success, error: errorToast } = useNotification()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -56,16 +57,16 @@ export function SignupStepInterests({
       // Keep client auth state in sync after signup.
       await login(form.email, form.password)
 
-      toast.success(
-        signupResponse.reactivated
-          ? "Conta reativada com sucesso!"
-          : "Conta criada com sucesso!"
-      )
+      const successMsg = signupResponse.reactivated
+        ? "Conta reativada com sucesso!"
+        : "Conta criada com sucesso!"
+      success(successMsg)
       onSuccess?.()
       router.push("/scholar")
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erro ao criar conta. Tente novamente."
       setError(message)
+      errorToast(message)
     } finally {
       setLoading(false)
     }

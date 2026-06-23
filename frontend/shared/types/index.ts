@@ -1,2 +1,2 @@
-export type { User } from '@/types/auth'
-export type { Conversation } from '@/types/entities'
+export type { AuthUser as User } from '@/types/auth'
+export type { Conversation } from '@/lib/types'

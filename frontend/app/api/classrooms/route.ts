@@ -36,3 +36,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch classrooms' }, { status: 500 })
   }
 }
+
+export async function POST(req: NextRequest) {
+  return proxy(req, '/api/v1/classrooms')
+}

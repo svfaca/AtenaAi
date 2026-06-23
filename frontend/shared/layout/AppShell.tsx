@@ -7,6 +7,7 @@ type AppShellProps = {
   sidebar: ReactNode;
   children: ReactNode;
   settingsPanel?: ReactNode;
+  about?: ReactNode;
 };
 
 /**
@@ -17,6 +18,7 @@ type AppShellProps = {
  * - sidebar: Left sidebar (navigation, features)
  * - children: Main content area
  * - settingsPanel: Optional overlay panel
+ * - about: Optional full-screen About panel (in layout flow)
  * 
  * Responsibilities:
  * - Layout structure only (flex, grid, positioning)
@@ -29,6 +31,7 @@ type AppShellProps = {
  * <AppShell
  *   header={<AppHeader />}
  *   sidebar={<StudentSidebar />}
+ *   about={isAboutOpen ? <AboutModal /> : null}
  * >
  *   <ChatWindow />
  * </AppShell>
@@ -39,6 +42,7 @@ export default function AppShell({
   sidebar,
   children,
   settingsPanel,
+  about,
 }: AppShellProps) {
   return (
     <div className="flex h-screen min-h-0 overflow-hidden">
@@ -50,10 +54,14 @@ export default function AppShell({
         {/* Header slot */}
         {header}
 
-        {/* Main content slot (children) */}
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          {children}
-        </main>
+        {/* About replaces main content when open so it uses all available space */}
+        {about ? (
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{about}</div>
+        ) : (
+          <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {children}
+          </main>
+        )}
       </div>
 
       {/* Settings panel slot (optional) */}

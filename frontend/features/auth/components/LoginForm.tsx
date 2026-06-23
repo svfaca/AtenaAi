@@ -2,14 +2,18 @@
 
 import { useState } from "react"
 import { useAuth } from "@/features/auth"
+import { useNotification } from "@/lib/hooks/useNotification"
+import type { AuthUser } from "@/features/auth/types/auth.types"
 
 type Props = {
   onSuccess?: () => void
+  onLoginSuccess?: (user: AuthUser) => void
   onSwitchToSignup?: () => void
 }
 
-export function LoginForm({ onSuccess, onSwitchToSignup }: Props) {
+export function LoginForm({ onSuccess, onLoginSuccess, onSwitchToSignup }: Props) {
   const { login } = useAuth()
+  const { success, error: errorToast } = useNotification()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -23,15 +27,20 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: Props) {
 
     if (!email || !password) {
       setError("Preencha todos os campos")
+      errorToast("Preencha todos os campos")
       return
     }
 
     try {
       setLoading(true)
-      await login(email, password)
+      const user = await login(email, password)
+      success(`Bem-vindo de volta, ${user.name || 'usuário'}!`)
       onSuccess?.()
+      onLoginSuccess?.(user)
     } catch (err) {
-      setError("Credenciais inválidas. Verifique seu email e senha.")
+      const message = "Credenciais inválidas. Verifique seu email e senha."
+      setError(message)
+      errorToast(message)
     } finally {
       setLoading(false)
     }

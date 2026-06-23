@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <title>AtenaAI — Área do Professor</title>
+
+    <!-- ⚡ Aplicar tema ANTES de qualquer renderização (evita flash) -->
+    <script>
+    (function() {
+        const theme = localStorage.getItem('theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.add('light');
+        }
+    })();
+    </script>
+
+    <script>
+    function setVH() {
+      const vh = window.visualViewport
+        ? window.visualViewport.height * 0.01
+        : window.innerHeight * 0.01;
+
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+
+    setVH();
+    window.addEventListener('load', setVH);
+    window.addEventListener('resize', setVH);
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', setVH);
+    }
+    </script>
+
+    <!-- 💡 ATUALIZAR LOGO ANTES DO RENDER (evita flash) -->
+    <script>
+    (function() {
+        const isDark = document.documentElement.classList.contains('dark');
+        // Função para atualizar logos assim que o DOM estiver pronto
+        function updateLogosSync() {
+            document.querySelectorAll('[data-theme-logo]').forEach(img => {
+                const basePath = '../assets/logo/';
+                const fileName = isDark ? 'logo-icon-dark.png' : 'logo-icon-ligth.png';
+                img.src = basePath + fileName;
+            });
+        }
+        // Executar assim que possível
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', updateLogosSync);
+        } else {
+            updateLogosSync();
+        }
+    })();
+    </script>
+
+    <link rel="icon" type="image/x-icon" href="../assets/logo/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/logo/favicon-32x32.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="../js/utils/i18n.js"></script>
+    
+    <!-- Sistema de Toast Centralizado -->
+    <script type="module" src="../js/ui/toast.js"></script>
+    
+    <!-- 🔐 BLOCKER CSS - Bloqueia página imediatamente, ANTES do body ser renderizado -->
+    <style>
+        /* Bloquear TUDO por padrão até validação */
+        body {
+            display: none !important;
+        }
+        /* Permitir apenas quando autorizado */
+        body.auth-allowed {
+            display: flex !important;
+        }
+    </style>
+    
+    <!-- 🔐 VERIFICAÇÃO SÍNCRONA - Removida (usar cookies do guard.js em vez disso) -->
+    <script>
+        window.__authAllowedByPreCheck = true;
+    </script>
+    
+    <script type="module" src="../js/middleware/guard.js"></script>
+  <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } }
+        };
+        
+        if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+    <style>
+        /* GERAL */
+        html, body {
+            overflow: hidden;
+        }
+        
+        /* SCROLLBARS */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: #CBD5E1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: #94A3B8; }
+        .dark ::-webkit-scrollbar-thumb { background-color: #374151; }
+        .dark ::-webkit-scrollbar-thumb:hover { background-color: #4B5563; }
+
+        .toast-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+        
+        .toast {
+            padding: 14px 20px;
+            border-radius: 12px;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+            max-width: 350px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            pointer-events: auto;
+            backdrop-filter: blur(8px);
+        }
+        
+        .toast-success { 
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-left: 4px solid #34d399;
+        }
+        .toast-error { 
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            border-left: 4px solid #f87171;
+        }
+        .toast-info { 
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border-left: 4px solid #60a5fa;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        @keyframes bounceIn {
+            from { 
+                transform: translateY(-20px) scale(0.95);
+                opacity: 0;
+            }
+            to { 
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        .animate-bounce-in {
+            animation: bounceIn 0.3s ease-out;
+        }
+        
+        .skeleton {
+            background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        
+        .dark .skeleton {
+            background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+            background-size: 200% 100%;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* SETTINGS MODAL */
+        .settings-modal-overlay {
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .settings-modal {
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        .settings-modal-overlay.hidden,
+        .settings-modal.hidden {
+            display: none;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 400px;
+            width: 90%;
+            transform: scale(0.95);
+            transition: transform 0.2s;
+        }
+        
+        .dark .modal-content {
+            background: #1f2937;
+        }
+        
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+        
+        .card-hover {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+    <style>@view-transition { navigation: auto; }</style>
+ </head>
+
+<body class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 flex flex-col overflow-hidden"
+      style="height: calc(var(--vh, 1vh) * 100);">
+
+<div class="flex flex-1 overflow-hidden min-h-0">
+    <div class="flex-1 flex flex-col relative w-full h-full">
+        <header class="h-16 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 shrink-0 bg-white dark:bg-gray-900 z-10">
+            <div class="flex items-center">
+                <a href="../professor" class="flex items-center text-xl font-bold text-gray-900 dark:text-gray-100">
+                    <img loading="lazy" src="../assets/logo/logo-icon-ligth.png" alt="AtenaAI" class="h-8 w-8 mr-2" data-theme-logo> AtenaAI
+                </a>
+                <span class="ml-2 px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">Professor</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="theme-toggle" class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300">
+                    <svg id="light-icon" class="w-5 h-5 hidden dark:block" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/></svg>
+                    <svg id="dark-icon" class="w-5 h-5 block dark:hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+                </button>
+                <button id="test-entrance-modal" class="hidden p-2 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold" title="Teste do Modal">
+                    TEST
+                </button>
+                <a href="../quem-somos" data-i18n="navigation.about" class="hidden md:block text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Quem Somos</a>
+                <div id="user-avatar" class="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold select-none cursor-pointer hover:opacity-90 transition-opacity" title="Configurações">
+                    <img loading="lazy" id="avatar-image" class="w-full h-full object-cover hidden rounded-full" src="" alt="Avatar">
+                    <span id="avatar-initial">P</span>
+                </div>
+            </div>
+        </header>
+        <main class="flex-1 flex flex-col min-h-0 overflow-auto bg-white dark:bg-gray-900">
+            <div class="p-4 md:p-6 max-w-7xl mx-auto w-full"><!-- TÍTULO -->
+    <div class="mb-6">
+     <h1 class="text-2xl font-bold">Minhas Turmas</h1>
+     <p class="text-sm text-gray-500 dark:text-gray-400">Crie e gerencie suas salas de aula</p>
+    </div><!-- ESTATÍSTICAS -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+     <div class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800" data-metric="classrooms">
+      <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+       <span id="total-classrooms">0</span>
+      </div>
+      <div class="text-sm text-blue-600/70 dark:text-blue-400/70">
+       Total de Turmas
+      </div>
+     </div>
+     <div class="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg border border-green-200 dark:border-green-800" data-metric="students">
+      <div class="text-2xl font-bold text-green-600 dark:text-green-400">
+       <span id="total-students">0</span>
+      </div>
+      <div class="text-sm text-green-600/70 dark:text-green-400/70">
+       Total de Alunos
+      </div>
+     </div>
+     <div class="bg-orange-50 dark:bg-orange-900/30 p-4 rounded-lg border border-orange-200 dark:border-orange-800" data-metric="pending">
+      <div class="text-2xl font-bold text-orange-600 dark:text-orange-400">
+       <span id="total-pending-requests">0</span>
+      </div>
+      <div class="text-sm text-orange-600/70 dark:text-orange-400/70">
+       Solicitações pendentes
+      </div>
+     </div>
+    </div><!-- LISTA DE TURMAS -->
+    <div>
+     <div class="flex items-center justify-between mb-4">
+      <h2 class="font-semibold text-lg">Suas turmas</h2>
+      <div class="flex items-center gap-2">
+       <button id="create-classroom-btn" class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md flex items-center gap-1 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+        Nova turma
+       </button>
+      </div>
+     </div>
+     <div id="classrooms-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <!-- Cards serão inseridos dinamicamente pelo JavaScript -->
+      <div class="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">
+       <svg class="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+       </svg>
+       <p>Carregando turmas...</p>
+      </div>
+     </div>
+    </div>
+
+    <!-- LISTA DE ALUNOS -->
+    <div class="mt-8">
+     <div class="flex items-center justify-between mb-4">
+      <h2 class="font-semibold text-lg">Todos os Alunos</h2>
+     </div>
+     <div id="students-list" class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Cards de alunos serão inseridos dinamicamente pelo JavaScript -->
+      <div class="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">
+       <svg class="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.856-1.487M15 10a3 3 0 11-6 0 3 3 0 016 0zM6 20h12a6 6 0 00-12 0z"/>
+       </svg>
+       <p>Carregando alunos...</p>
+      </div>
+     </div>
+    </div>
+            </div>
+        </main>
+        
+        <footer class="border-t border-gray-200 dark:border-gray-700 py-2 px-4 shrink-0">
+            <div class="text-center text-[10px] text-gray-400" data-i18n="footer.copyright">© 2026 AtenaAI</div>
+        </footer>
+    </div>
+</div>
+
+<!-- 🗑️ MODAL DE CONFIRMAÇÃO - DELETAR TURMA -->
+<div id="delete-classroom-overlay" class="fixed inset-0 bg-black/50 hidden opacity-0 transition-opacity duration-200" style="z-index:95;"></div>
+<div id="delete-classroom-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-sm w-full mx-4 hidden opacity-0 scale-95 transition-all duration-200" style="z-index:100;">
+    <div class="p-6">
+        <!-- Ícone de aviso -->
+        <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
+            <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4v2m0 4v2M7.08 6.47A9 9 0 1120.92 17.53M9.59 9.59a3 3 0 105.82 2.82m-15 .82a9 9 0 0018.82-5.23"/>
+            </svg>
+        </div>
+        
+        <!-- Título -->
+        <h3 class="text-center text-lg font-bold text-gray-900 dark:text-white mb-2">
+            Excluir turma?
+        </h3>
+        
+        <!-- Nome da turma -->
+        <p class="text-center text-gray-600 dark:text-gray-400 mb-3">
+            Você está prestes a excluir a turma <strong id="delete-classroom-name" class="text-gray-900 dark:text-white"></strong>
+        </p>
+        
+        <!-- Descrição do risco -->
+        <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4">
+            <p class="text-sm text-red-800 dark:text-red-300">
+                ⚠️ Esta ação é <strong>irreversível</strong>. Todos os dados e conversas serão perdidos permanentemente.
+            </p>
+        </div>
+        
+        <!-- Botões -->
+        <div class="flex gap-3">
+            <button id="delete-classroom-cancel" class="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium transition-colors">
+                Cancelar
+            </button>
+            <button id="delete-classroom-confirm" class="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors flex items-center justify-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+                <span>Excluir</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="settings-modal-overlay" class="settings-modal-overlay hidden fixed inset-0 bg-black/50" style="z-index:30;"></div>
+<div id="settings-modal" class="settings-modal hidden fixed right-0 top-0 h-full w-full max-w-md bg-white dark:bg-gray-800 shadow-2xl flex flex-col" style="z-index:40;">
+    <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center gap-4">
+        <button id="close-settings" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+        </button>
+        <h2 class="text-xl font-bold text-gray-800 dark:text-white flex-1">Configurações</h2>
+        <button id="settings-logout-btn" class="text-sm text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
+            Sair
+        </button>
+    </div>
+    
+    <div class="flex-1 overflow-y-auto p-6">
+        <form id="settings-form" class="space-y-6">
+            <!-- Quem Somos (visível apenas em mobile) -->
+            <a href="../quem-somos" class="md:hidden flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="font-medium text-gray-900 dark:text-white" data-i18n="navigation.about">Quem Somos</span>
+                <svg class="w-4 h-4 ml-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </a>
+
+            <!-- Foto de Perfil -->
+            <div class="space-y-2">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2" data-i18n="settings.profile">Perfil</h3>
+                <div class="flex items-center gap-4 pt-1">
+                    <div class="w-20 h-20 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex items-center justify-center border-2 border-gray-300 dark:border-gray-600">
+                        <img loading="lazy" id="settings-preview" src="" alt="Preview" class="w-full h-full object-cover hidden">
+                        <span id="settings-initial" class="text-2xl font-bold text-gray-500">P</span>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" data-i18n="settings.profilePicture">Foto de Perfil</label>
+                        <input type="file" id="settings-avatar" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-gray-300">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Informações Pessoais -->
+            <div class="space-y-4">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2" data-i18n="settings.personalInfo">Informações Pessoais</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" data-i18n="settings.fullName">Nome Completo</label>
+                        <input type="text" id="setting-name" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white p-2 border">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" data-i18n="settings.nickname">Apelido</label>
+                        <input type="text" id="setting-nickname" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white p-2 border">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" data-i18n="settings.birthDate">Data de Nascimento</label>
+                        <input type="date" id="setting-birthdate" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white p-2 border">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" data-i18n="settings.gender">Sexo</label>
+                        <select id="setting-gender" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white p-2 border">
+                            <option value="">Selecione...</option>
+                            <option value="male" data-i18n="settings.male">Masculino</option>
+                            <option value="female" data-i18n="settings.female">Feminino</option>
+                            <option value="other" data-i18n="settings.other">Outro</option>
+                            <option value="prefer_not_say" data-i18n="settings.preferNotSay">Prefiro não dizer</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" data-i18n="settings.emailReadonly">Email</label>
+                        <input type="email" id="setting-email" readonly class="w-full rounded-md border-gray-300 shadow-sm bg-gray-100 dark:bg-gray-600 dark:border-gray-600 dark:text-gray-300 p-2 border cursor-not-allowed">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Zona de Perigo -->
+            <div class="pt-6 mt-6 border-t border-red-200 dark:border-red-900/30">
+                <h3 class="text-lg font-medium text-red-600 mb-2" data-i18n="settings.dangerZone">Zona de Perigo</h3>
+                <button type="button" id="delete-account-btn" data-i18n="settings.deleteAccountPermanent" class="w-full px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-md hover:bg-red-100 hover:border-red-300 transition-colors text-sm font-medium">
+                    Excluir minha conta permanentemente
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Botões de Ação -->
+    <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shrink-0">
+        <div class="flex gap-3">
+            <button id="cancel-settings" data-i18n="settings.cancel" class="flex-1 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium">
+                Cancelar
+            </button>
+            <button type="submit" form="settings-form" data-i18n="settings.save" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium shadow-sm">
+                Salvar Alterações
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
+
+<!-- 🛠️ Modal de Configurações da Sala -->
+<div id="classroom-settings-overlay" class="hidden fixed inset-0 bg-black/50 z-[70]"></div>
+<div id="classroom-settings-modal" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 rounded-xl p-6 w-[90%] max-w-lg z-[80] shadow-2xl max-h-[90vh] overflow-y-auto">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white">Configurações da Turma</h2>
+        <button id="close-classroom-settings" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Formulário -->
+    <form id="classroom-settings-form" class="space-y-6">
+        <!-- Renomear Turma -->
+        <div>
+            <label for="classroom-name-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Nome da Turma
+            </label>
+            <input type="text" id="classroom-name-input" placeholder="Digite o novo nome" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <!-- Participantes -->
+        <div>
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Participantes</h3>
+            </div>
+            <div id="classroom-participants" class="space-y-2 max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                <div class="text-center py-4 text-gray-500 dark:text-gray-400">
+                    <svg class="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
+                    </svg>
+                    Carregando participantes...
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- Botões -->
+    <div class="flex flex-col gap-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+        <button id="save-classroom-settings" class="w-full px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors hidden" data-has-changes="false">
+            Salvar Alterações
+        </button>
+        <button id="delete-classroom-from-settings-btn" class="w-full px-4 py-2.5 rounded-lg bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 font-medium transition-colors">
+            Deletar Turma
+        </button>
+    </div>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
+<div id="delete-account-modal-overlay" class="hidden fixed inset-0 bg-black/50 z-[70]"></div>
+<div id="delete-account-modal" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 rounded-lg p-6 w-[90%] max-w-md z-[80] shadow-2xl">
+    <h3 class="text-lg font-bold mb-2 text-red-600" data-i18n="settings.deleteAccount">Excluir Conta</h3>
+    <p class="text-gray-600 dark:text-gray-300 mb-4 text-sm">Esta ação é <strong>irreversível</strong>. Todos os seus dados, turmas e informações serão permanentemente excluídos.</p>
+    <p class="text-gray-600 dark:text-gray-300 mb-6 text-sm">Digite <strong class="text-red-600">EXCLUIR</strong> para confirmar:</p>
+    <input type="text" id="delete-confirm-input" class="w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white p-2 border mb-4" placeholder="Digite EXCLUIR">
+    <div class="flex gap-3">
+        <button id="cancel-delete-account" class="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 font-medium transition-colors">Cancelar</button>
+        <button id="confirm-delete-account" disabled class="flex-1 px-4 py-2 bg-red-400 rounded text-white font-medium transition-colors cursor-not-allowed">Excluir Conta</button>
+    </div>
+</div>
+
+<!-- Modal de Criar Nova Turma -->
+<div id="create-classroom-modal-overlay" class="hidden fixed inset-0 bg-black/50 z-[70]"></div>
+<div id="create-classroom-modal" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 rounded-lg p-6 w-[90%] max-w-md z-[80] shadow-2xl">
+    <h3 class="text-lg font-bold mb-4 text-gray-800 dark:text-white">Criar Nova Turma</h3>
+    <form id="create-classroom-form">
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome da turma</label>
+            <input type="text" id="create-classroom-name-input" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white p-2 border" placeholder="Ex: Matemática 9º Ano" required>
+        </div>
+        <div class="flex gap-3">
+            <button type="button" id="cancel-create-classroom" class="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 font-medium transition-colors">Cancelar</button>
+            <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium transition-colors">Criar</button>
+        </div>
+    </form>
+</div>
+
+<!-- 📋 Modal de Solicitação de Entrada em Sala -->
+<div id="entrance-request-overlay" class="hidden fixed inset-0 bg-black/50 z-[70]"></div>
+<div id="entrance-request-modal" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 rounded-xl p-6 w-[90%] max-w-md z-[80] shadow-2xl animate-bounce-in">
+    <!-- Botão Fechar -->
+    <button id="entrance-request-close" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors" aria-label="Fechar">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+    </button>
+    
+    <!-- Ícone de notificação -->
+    <div class="flex justify-center mb-4">
+        <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-lg">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Título -->
+    <h2 class="text-xl font-bold text-center text-gray-900 dark:text-white mb-2">
+        Solicitação de Entrada em Sala
+    </h2>
+
+    <!-- Subtítulo -->
+    <p class="text-center text-gray-500 dark:text-gray-400 text-sm mb-4">
+        Um aluno solicita para entrar na sua sala de aula
+    </p>
+
+    <!-- Informações do Aluno -->
+    <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-5 border border-blue-200 dark:border-blue-800">
+        <div class="flex items-center gap-3 mb-2">
+            <div id="entrance-request-avatar" class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                A
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="font-semibold text-gray-900 dark:text-white truncate" id="entrance-request-name">Aluno Pendente</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 truncate" id="entrance-request-email">email@example.com</p>
+            </div>
+        </div>
+        <p class="text-xs text-gray-600 dark:text-gray-400 mt-2">
+            <span class="font-medium" id="entrance-request-classroom">Turma</span>
+        </p>
+    </div>
+
+    <!-- Botões de Ação -->
+    <div class="flex gap-3">
+        <button id="entrance-request-reject" class="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium transition-colors">
+            Rejeitar
+        </button>
+        <button id="entrance-request-approve" class="flex-1 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            Aprovar
+        </button>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // 🔔 TOAST GLOBAL - Define antes de tudo
+    // ==========================================
+    window.showToast = function(messageOrObj, type = 'info') {
+        // Suporta ambos: showToast('msg', 'type') ou showToast({message, type})
+        let message = messageOrObj;
+        if (typeof messageOrObj === 'object') {
+            message = messageOrObj.message || messageOrObj.title || '';
+            type = messageOrObj.type || 'info';
+        }
+        
+        const container = document.getElementById('toast-container');
+        if (!container) {
+            console.warn('Toast container not found');
+            return;
+        }
+        
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        
+        // Ícone baseado no tipo
+        const icons = {
+            success: `<svg class="w-5 h-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`,
+            error: `<svg class="w-5 h-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>`,
+            info: `<svg class="w-5 h-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`
+        };
+        
+        toast.innerHTML = `
+            <div class="flex items-center">
+                ${icons[type] || icons.info}
+                <span>${message}</span>
+            </div>
+        `;
+        
+        container.appendChild(toast);
+        
+        // Auto-remove após 3 segundos
+        setTimeout(() => {
+            toast.style.animation = 'fadeOut 0.3s ease forwards';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    };
+
+    // ==========================================
+    // 🎨 TOAST ESTILIZADO COM EMOJIS
+    // ==========================================
+    window.showStyledToast = function(message, type = 'info', duration = 3000) {
+        const icons = {
+            'success': '✅',
+            'error': '❌',
+            'warning': '⚠️',
+            'info': 'ℹ️'
+        };
+        
+        const colors = {
+            'success': 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200',
+            'error': 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200',
+            'warning': 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200',
+            'info': 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200'
+        };
+
+        const toast = document.createElement('div');
+        toast.className = `fixed top-4 right-4 z-[9999] bg-white dark:bg-gray-800 shadow-xl rounded-lg p-4 border-l-4 max-w-sm animate-bounce-in ${colors[type]}`;
+        toast.innerHTML = `
+            <div class="flex gap-3 items-start">
+                <div class="text-xl flex-shrink-0">${icons[type]}</div>
+                <p class="text-sm font-medium">${message}</p>
+            </div>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        if (duration > 0) {
+            setTimeout(() => toast.remove(), duration);
+        }
+    };
+
+    // ==========================================
+    // 🔄 REDIRECT TO LOGIN (helper para 401)
+    // ==========================================
+    function redirectToLogin() {
+        localStorage.clear();
+        window.location.href = '../login/';
+    }
+
+    // Aguarda DOM pronto para garantir que todos os elementos existam
+    document.addEventListener('DOMContentLoaded', function() {
+        // Theme Toggle é gerenciado pelo ui.js (evita duplicação que anula o toggle)
+        
+        // Avatar abre configurações
+        const userAvatar = document.getElementById('user-avatar');
+        const settingsModal = document.getElementById('settings-modal');
+        const settingsOverlay = document.getElementById('settings-modal-overlay');
+        
+        if (userAvatar) {
+            userAvatar.addEventListener('click', function() {
+                settingsModal?.classList.remove('hidden');
+                settingsOverlay?.classList.remove('hidden');
+                loadSettingsData();
+            });
+        }
+
+        // Fechar configurações (botão hamburguer e overlay)
+        const closeSettings = document.getElementById('close-settings');
+        const cancelSettings = document.getElementById('cancel-settings');
+        
+        function hideSettings() {
+            settingsModal?.classList.add('hidden');
+            settingsOverlay?.classList.add('hidden');
+        }
+        
+        closeSettings?.addEventListener('click', hideSettings);
+        cancelSettings?.addEventListener('click', hideSettings);
+        settingsOverlay?.addEventListener('click', hideSettings);
+
+        // Carregar dados do usuário nas configurações
+        function loadSettingsData() {
+            const userData = JSON.parse(localStorage.getItem('user') || '{}');
+            
+            document.getElementById('setting-name').value = userData.full_name || '';
+            document.getElementById('setting-nickname').value = userData.nickname || '';
+            document.getElementById('setting-birthdate').value = userData.birth_date || '';
+            document.getElementById('setting-gender').value = userData.gender || '';
+            document.getElementById('setting-email').value = userData.email || '';
+            
+            // Preview da foto
+            const preview = document.getElementById('settings-preview');
+            const initial = document.getElementById('settings-initial');
+            if (userData.profile_image) {
+                preview.src = userData.profile_image;
+                preview.classList.remove('hidden');
+                initial.classList.add('hidden');
+            } else {
+                preview.classList.add('hidden');
+                initial.classList.remove('hidden');
+                const displayName = userData.nickname || userData.full_name || 'P';
+                initial.textContent = displayName.charAt(0).toUpperCase();
+            }
+        }
+
+        // Preview de avatar ao selecionar arquivo
+        document.getElementById('settings-avatar')?.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('settings-preview');
+                    const initial = document.getElementById('settings-initial');
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                    initial.classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Submit do formulário de configurações
+        document.getElementById('settings-form')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('full_name', document.getElementById('setting-name').value);
+            formData.append('nickname', document.getElementById('setting-nickname').value);
+            formData.append('birth_date', document.getElementById('setting-birthdate').value);
+            formData.append('gender', document.getElementById('setting-gender').value);
+            
+            const avatarFile = document.getElementById('settings-avatar').files[0];
+            if (avatarFile) {
+                formData.append('profile_image', avatarFile);
+            }
+
+            // Detecta API URL
+            const hostname = window.location.hostname;
+            const apiBase = (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('192.168.')) 
+                ? 'http://127.0.0.1:8000' 
+                : 'https://web-production-110f3.up.railway.app';
+
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${apiBase}/api/v1/auth/update-profile`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                if (response.status === 401) {
+                    redirectToLogin();
+                    return;
+                }
+
+                if (response.ok) {
+                    const updatedUser = await response.json();
+                    localStorage.setItem('user', JSON.stringify(updatedUser));
+                    showToast('Configurações salvas com sucesso!', 'success');
+                    hideSettings();
+                    
+                    // Função auxiliar para atualizar avatares
+                    const updateAvatarElements = (imageId, initialId) => {
+                        const avatarImage = document.getElementById(imageId);
+                        const avatarInitial = document.getElementById(initialId);
+                        
+                        if (avatarImage && avatarInitial) {
+                            if (updatedUser.profile_image) {
+                                avatarImage.src = updatedUser.profile_image;
+                                avatarImage.classList.remove('hidden');
+                                avatarInitial.classList.add('hidden');
+                            } else {
+                                avatarImage.classList.add('hidden');
+                                avatarInitial.classList.remove('hidden');
+                                const displayName = updatedUser.nickname || updatedUser.full_name || 'P';
+                                avatarInitial.textContent = displayName.charAt(0).toUpperCase();
+                            }
+                        }
+                    };
+                    
+                    // Atualiza avatar no header
+                    updateAvatarElements('avatar-image', 'avatar-initial');
+                    
+                    // Atualiza avatar no modal de configurações
+                    updateAvatarElements('settings-preview', 'settings-initial');
+                } else {
+                    showToast('Erro ao salvar configurações', 'error');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                showToast('Erro ao salvar configurações', 'error');
+            }
+        });
+
+        // Modal de excluir conta
+        const deleteAccountBtn = document.getElementById('delete-account-btn');
+        const deleteAccountModal = document.getElementById('delete-account-modal');
+        const deleteAccountOverlay = document.getElementById('delete-account-modal-overlay');
+        const deleteConfirmInput = document.getElementById('delete-confirm-input');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-account');
+        const cancelDeleteBtn = document.getElementById('cancel-delete-account');
+
+        deleteAccountBtn?.addEventListener('click', function() {
+            deleteAccountModal?.classList.remove('hidden');
+            deleteAccountOverlay?.classList.remove('hidden');
+            deleteConfirmInput.value = '';
+            confirmDeleteBtn.disabled = true;
+            confirmDeleteBtn.classList.add('bg-red-400', 'cursor-not-allowed');
+            confirmDeleteBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
+        });
+
+        deleteConfirmInput?.addEventListener('input', function() {
+            const isValid = this.value === 'EXCLUIR';
+            confirmDeleteBtn.disabled = !isValid;
+            if (isValid) {
+                confirmDeleteBtn.classList.remove('bg-red-400', 'cursor-not-allowed');
+                confirmDeleteBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+            } else {
+                confirmDeleteBtn.classList.add('bg-red-400', 'cursor-not-allowed');
+                confirmDeleteBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
+            }
+        });
+
+        function hideDeleteModal() {
+            deleteAccountModal?.classList.add('hidden');
+            deleteAccountOverlay?.classList.add('hidden');
+        }
+
+        cancelDeleteBtn?.addEventListener('click', hideDeleteModal);
+        deleteAccountOverlay?.addEventListener('click', hideDeleteModal);
+
+        confirmDeleteBtn?.addEventListener('click', async function() {
+            if (deleteConfirmInput.value !== 'EXCLUIR') return;
+
+            // Detecta API URL
+            const hostname = window.location.hostname;
+            const apiBase = (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('192.168.')) 
+                ? 'http://127.0.0.1:8000' 
+                : 'https://web-production-110f3.up.railway.app';
+
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${apiBase}/api/v1/auth/delete-account`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401) {
+                    redirectToLogin();
+                    return;
+                }
+
+                if (response.ok) {
+                    localStorage.clear();
+                    showToast('Conta excluída com sucesso', 'success');
+                    setTimeout(() => {
+                        window.location.href = '../login/';
+                    }, 1500);
+                } else {
+                    showToast('Erro ao excluir conta', 'error');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                showToast('Erro ao excluir conta', 'error');
+            }
+        });
+
+        // Copiar código
+        document.querySelectorAll('button').forEach(btn => {
+            if (btn.textContent.includes('Copiar')) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const codeSpan = this.parentElement.querySelector('span.font-mono');
+                    if (codeSpan) {
+                        const code = codeSpan.textContent.trim();
+                        navigator.clipboard.writeText(code).then(() => {
+                            showToast('Código copiado!', 'success');
+                        });
+                    }
+                });
+            }
+        });
+    });
+</script>
+<script type="module" src="../js/ui/ui.js"></script>
+<script type="module" src="../js/core/auth.js"></script>
+<script type="module" src="../js/pages/professor/professor-page.js"></script>
+<script type="module">
+    // Inicializar serviço de notificações
+    import { initNotifications } from '../js/services/notifications.js';
+    initNotifications();
+</script>
+</body>
+</html>

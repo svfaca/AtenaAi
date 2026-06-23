@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, status, File, UploadFile, Response, Request
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from typing import Optional
@@ -9,10 +10,12 @@ import os
 
 # Importações do projeto
 from app.database.database import get_db
+from app.database.query_helpers import active_users_query
 from app.models.user import User, UserRole
 from app.core.dependencies import get_current_user
 from app.schemas.user import UserCreate, UserResponse, Token
 from app.core.security import create_access_token, verify_password, get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES, create_refresh_token, REFRESH_TOKEN_EXPIRE_DAYS
+from app.core.logger import logger
 from app.services.file_service import FileService
 from app.utilities.interests import normalize_interests
 
@@ -44,6 +47,7 @@ class EmailCheckRequest(BaseModel):
 class EmailCheckResponse(BaseModel):
     available: bool
     message: str
+    reactivatable: bool = False
 
 class StatsResponse(BaseModel):
     classroom_count: int
@@ -60,7 +64,11 @@ class AuthSuccessResponse(BaseModel):
 # 1. ROTA DE REGISTRO (CRIAR CONTA)
 # ============================
 @router.post("/register", response_model=UserResponse)
-def register(user: UserCreate, db: Session = Depends(get_db)):
+def register(
+    user: UserCreate,
+    response: Response,
+    db: Session = Depends(get_db)
+):
     """
     Registra novo usuário.
     Aceita profile_image como string base64 (data:image/...;base64,...)
@@ -69,26 +77,51 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         from app.core.logger import logger
         logger.info(f"[REGISTRO] Iniciando registro para email: {user.email}")
         
-        # Verifica se email já existe
-        user_exists = db.query(User).filter(User.email == user.email).first()
-        if user_exists:
-            logger.warning(f"[REGISTRO] Email já existe: {user.email}")
+        normalized_email = (user.email or "").strip().lower()
+
+        # 1) Verifica primeiro usuários ativos com o helper de soft delete.
+        active_user = active_users_query(db).filter(User.email == normalized_email).first()
+        if active_user:
+            logger.warning(f"[REGISTRO] Email já existe (ativo): {normalized_email}")
             raise HTTPException(
                 status_code=400,
                 detail="Este email já está registrado."
             )
 
-        logger.info(f"[REGISTRO] Email disponível: {user.email}")
+        hashed_password = get_password_hash(user.password)
+
+        # 2) Sem ativo encontrado, busca sem filtro para identificar conta deletada.
+        existing_user = db.query(User).filter(User.email == normalized_email).first()
+
+        # Reativa conta deletada em vez de criar novo registro (evita UNIQUE(email)).
+        if existing_user and existing_user.deleted_at is not None:
+            logger.info(f"[REGISTRO] Reativando conta soft deleted: {normalized_email}")
+            existing_user.deleted_at = None
+            existing_user.deleted_by = None
+            existing_user.delete_scheduled_at = None
+            existing_user.hashed_password = hashed_password
+
+            db.add(existing_user)
+            db.commit()
+            db.refresh(existing_user)
+
+            response.headers["X-Account-Reactivated"] = "true"
+            logger.info(
+                f"[REGISTRO] Conta reativada com sucesso: ID={existing_user.id}, Email={normalized_email}"
+            )
+            return existing_user
+
+        # 3) Email inexistente: cria novo usuário.
+        logger.info(f"[REGISTRO] Email disponível: {normalized_email}")
 
         # Cria novo usuário com senha hash
-        hashed_password = get_password_hash(user.password)
         role = UserRole.student
 
-        if BOOTSTRAP_ADMIN_EMAIL and user.email == BOOTSTRAP_ADMIN_EMAIL:
+        if BOOTSTRAP_ADMIN_EMAIL and normalized_email == BOOTSTRAP_ADMIN_EMAIL:
             role = UserRole.admin
 
         new_user = User(
-            email=user.email,
+            email=normalized_email,
             hashed_password=hashed_password,
             full_name=user.full_name,
             nickname=user.nickname,
@@ -128,6 +161,13 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         
     except HTTPException:
         raise
+    except IntegrityError:
+        db.rollback()
+        logger.warning(f"[REGISTRO] Violação de unicidade para email: {user.email}")
+        raise HTTPException(
+            status_code=400,
+            detail="Este email já está registrado."
+        )
     except Exception as e:
         logger.error(f"[REGISTRO] ERRO: {str(e)}", exc_info=True)
         db.rollback()
@@ -150,16 +190,47 @@ def login(
     ✅ NOVO: Autentica e define cookies HttpOnly/Secure/SameSite
     Token NÃO é retornado no response body (segurança)
     """
-    # Busca usuário pelo email
-    user = db.query(User).filter(User.email == form_data.username).first()
-    
-    # Verifica senha
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    normalized_username = (form_data.username or "").strip().lower()
+
+    if not normalized_username:
+        logger.warning("[LOGIN] Tentativa sem username no payload")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email ou senha incorretos",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    logger.info(f"[LOGIN] Tentativa para email: {normalized_username}")
+
+    # Busca usuário ativo pelo email
+    user = active_users_query(db).filter(User.email == normalized_username).first()
+
+    if not user:
+        existing_user = db.query(User).filter(User.email == normalized_username).first()
+        if existing_user and existing_user.deleted_at is not None:
+            logger.warning(
+                f"[LOGIN] Conta soft deleted bloqueada: {normalized_username} | "
+                f"deleted_at={existing_user.deleted_at}"
+            )
+        else:
+            logger.warning(f"[LOGIN] Usuário não encontrado: {normalized_username}")
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email ou senha incorretos",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Verifica senha
+    if not verify_password(form_data.password, user.hashed_password):
+        logger.warning(f"[LOGIN] Senha inválida para: {normalized_username}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email ou senha incorretos",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    logger.info(f"[LOGIN] Sucesso para: {normalized_username}")
     
     # Gera Access Token (15 minutos - CURTO)
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -203,27 +274,6 @@ def login(
         domain=COOKIE_DOMAIN,
     )
     
-    # ✅ SET ROLE COOKIE (para middleware)
-    response.set_cookie(
-        key="role",
-        value=user.role.value,
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        httponly=False,  # Pode ser lido no client (não contém informações sensíveis)
-        secure=COOKIE_SECURE,
-        samesite=COOKIE_SAMESITE,
-        domain=COOKIE_DOMAIN,
-    )
-    
-    # ✅ SET USER ID COOKIE (opcional, para debug)
-    response.set_cookie(
-        key="user_id",
-        value=str(user.id),
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        httponly=False,
-        secure=COOKIE_SECURE,
-        samesite=COOKIE_SAMESITE,
-        domain=COOKIE_DOMAIN,
-    )
     
     return AuthSuccessResponse(
         message="Login bem-sucedido. Token definido em cookie HttpOnly.",
@@ -239,14 +289,31 @@ def check_email(data: EmailCheckRequest, db: Session = Depends(get_db)):
     try:
         from app.core.logger import logger
         logger.info(f"[EMAIL-CHECK] Verificando email: {data.email}")
-        existing_user = db.query(User).filter(User.email == data.email).first()
-        
+        normalized_email = (data.email or "").strip().lower()
+        existing_user = db.query(User).filter(User.email == normalized_email).first()
+
+        if existing_user and existing_user.deleted_at is not None:
+            logger.info(f"[EMAIL-CHECK] Email com conta deletada: {normalized_email}")
+            return {
+                "available": True,
+                "reactivatable": True,
+                "message": "Essa conta foi excluida anteriormente. Deseja reativa-la?"
+            }
+
         if existing_user:
-            logger.warning(f"[EMAIL-CHECK] Email já existe: {data.email}")
-            return {"available": False, "message": "Este email já está registrado."}
+            logger.warning(f"[EMAIL-CHECK] Email já existe: {normalized_email}")
+            return {
+                "available": False,
+                "reactivatable": False,
+                "message": "Este email já está registrado."
+            }
         
-        logger.info(f"[EMAIL-CHECK] Email disponível: {data.email}")
-        return {"available": True, "message": "Email disponível!"}
+        logger.info(f"[EMAIL-CHECK] Email disponível: {normalized_email}")
+        return {
+            "available": True,
+            "reactivatable": False,
+            "message": "Email disponível!"
+        }
     except Exception as e:
         logger.error(f"[EMAIL-CHECK] ERRO: {str(e)}", exc_info=True)
         raise HTTPException(
@@ -326,7 +393,7 @@ async def update_profile(
             user.interests = normalized
         except Exception as e:
             logger.warning(f"[UPDATE-PROFILE] Erro ao normalizar interesses: {e}")
-            user.interests = interests
+            user.interests = None
     
     # Imagem de Perfil (UploadFile)
     if profile_image and profile_image.filename:
@@ -478,8 +545,8 @@ def refresh_token(
             detail="Refresh token inválido ou expirado"
         )
     
-    # Busca usuário
-    user = db.query(User).filter(User.id == int(user_id)).first()
+    # Busca usuário ativo
+    user = active_users_query(db).filter(User.id == int(user_id)).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -540,11 +607,9 @@ def refresh_token(
 @router.post("/logout")
 def logout(response: Response):
     """
-    ✅ NOVO: Limpa TODOS os cookies de autenticação
+    ✅ LOGOUT: Limpa TODOS os cookies de autenticação
     """
     response.delete_cookie("access_token", httponly=True, samesite=COOKIE_SAMESITE)
-    response.delete_cookie("refresh_token", httponly=True, samesite=COOKIE_SAMESITE)  # 🔒 NOVO
-    response.delete_cookie("role", samesite=COOKIE_SAMESITE)
-    response.delete_cookie("user_id", samesite=COOKIE_SAMESITE)
+    response.delete_cookie("refresh_token", httponly=True, samesite=COOKIE_SAMESITE)
     
     return {"message": "Logout bem-sucedido. Cookies limpos."}

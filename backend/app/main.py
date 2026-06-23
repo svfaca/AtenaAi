@@ -35,7 +35,9 @@ import app.models  # noqa: F401  — registra todos os modelos de uma vez
 # =====================================================
 # DATABASE INIT
 # =====================================================
-Base.metadata.create_all(bind=engine)
+# 🔄 GERENCIADO POR ALEMBIC — não usar create_all() em produção
+# Para rodar migrations: alembic upgrade head
+# Base.metadata.create_all(bind=engine)
 
 logger.info(f"🚀 AtenaAI Backend iniciando em ambiente: {ENVIRONMENT}")
 
@@ -50,6 +52,7 @@ from app.routes.teacher import router as teacher_router
 from app.routes.admin import router as admin_router
 from app.routes.notifications import router as notifications_router
 from app.routes.group_chat import router as group_chat_router
+from app.routes.users import router as users_router
 
 # =====================================================
 # APP INITIALIZATION
@@ -119,6 +122,7 @@ app.include_router(teacher_router, prefix=API_PREFIX, tags=["Teacher"])
 app.include_router(admin_router, prefix=API_PREFIX, tags=["Admin"])
 app.include_router(notifications_router, prefix=API_PREFIX, tags=["Notifications"])
 app.include_router(group_chat_router, prefix=API_PREFIX, tags=["Group Chat"])
+app.include_router(users_router, prefix=API_PREFIX, tags=["Users"])
 
 # =====================================================
 # HEALTH CHECK

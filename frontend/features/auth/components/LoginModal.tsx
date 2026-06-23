@@ -2,14 +2,16 @@
 
 import { Modal } from "@/shared/ui/Modal"
 import { LoginForm } from "./LoginForm"
+import type { AuthUser } from "@/features/auth/types/auth.types"
 
 type Props = {
   open: boolean
   onClose: () => void
   onSwitchToSignup?: () => void
+  onLoginSuccess?: (user: AuthUser) => void
 }
 
-export function LoginModal({ open, onClose, onSwitchToSignup }: Props) {
+export function LoginModal({ open, onClose, onSwitchToSignup, onLoginSuccess }: Props) {
   return (
     <Modal open={open} onClose={onClose} maxWidth="md">
       <button
@@ -32,7 +34,7 @@ export function LoginModal({ open, onClose, onSwitchToSignup }: Props) {
         </svg>
       </button>
 
-      <LoginForm onSuccess={onClose} onSwitchToSignup={onSwitchToSignup} />
+      <LoginForm onSuccess={onClose} onLoginSuccess={onLoginSuccess} onSwitchToSignup={onSwitchToSignup} />
     </Modal>
   )
 }

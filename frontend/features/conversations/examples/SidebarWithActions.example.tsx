@@ -210,8 +210,8 @@ export default function StudentSidebarWithActions() {
 
 // ❌ WRONG: Only updating Zustand
 function badHandleDelete_OnlyStore(id: number) {
-  const { clearSelectedConversation } = useChatStore.getState();
-  clearSelectedConversation();
+  const { clearConversation } = useChatStore.getState();
+  clearConversation();
   // Problem: Conversation still shows in sidebar
   // Missing: deleteConversation(id, mutate)
 }
@@ -226,7 +226,7 @@ function badHandleDelete_OnlySWR(id: number) {
 
 // ❌ WRONG: Not using optimistic updates
 async function badHandleCreate_NoOptimistic() {
-  const newConv = await api('/api/conversations', { method: 'POST' });
+  await fetch('/api/conversations', { method: 'POST' });
   const { mutate } = useSWRConfig();
   mutate('/api/conversations'); // ← Triggers full refetch (slow)
   
@@ -235,6 +235,7 @@ async function badHandleCreate_NoOptimistic() {
 
 // ❌ WRONG: Forgetting to handle errors
 async function badHandleDelete_NoErrorHandling(id: number) {
+  const { mutate } = useSWRConfig();
   await deleteConversation(id, mutate);
   // Problem: If API fails, user doesn't know
   // Always wrap in try/catch and show toast

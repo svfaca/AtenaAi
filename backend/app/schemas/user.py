@@ -1,5 +1,5 @@
-from pydantic import BaseModel, field_validator
-from typing import Optional, List
+from pydantic import BaseModel, Field, field_validator
+from typing import Optional, List, Union
 from datetime import date
 import json
 
@@ -17,7 +17,7 @@ class UserCreate(BaseModel):
     full_name: str
 
     nickname: Optional[str] = None
-    interests: Optional[str] = None
+    interests: Optional[Union[List[str], str]] = None
     profile_image: Optional[str] = None
     gender: Optional[str] = None
     birth_date: Optional[date] = None
@@ -48,7 +48,7 @@ class UserResponse(BaseModel):
     role: UserRole
 
     nickname: Optional[str] = None
-    interests: Optional[List[str]] = None
+    interests: List[str] = Field(default_factory=list)
     profile_image: Optional[str] = None
     gender: Optional[str] = None
     birth_date: Optional[date] = None

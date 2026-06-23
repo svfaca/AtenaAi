@@ -1,9 +1,11 @@
-'use client';
+﻿'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useThemeMode } from '@/lib/hooks/useThemeMode';
+import { useAboutModal, AboutModal } from '@/features/about';
+import { useClassroomView } from '@/features/classrooms/hooks/useClassroomView';
+import ClassroomPageModal from '@/features/classrooms/components/modals/ClassroomPageModal';
 import AppShell from '@/shared/layout/AppShell';
 import AppHeader from '@/shared/layout/AppHeader';
 import AppSidebar from '@/shared/layout/AppSidebar';
@@ -19,28 +21,40 @@ type StudentAreaProps = {
 
 /**
  * StudentArea - Composition component for student experience
- * 
+ *
  * Responsibilities:
  * - Compose AppShell with student-specific components
  * - Manage UI state (mobile sidebar, settings panel)
  * - Pass children to main area
- * 
+ *
  * Does NOT:
  * - Fetch data (delegated to feature components)
  * - Handle business logic (delegated to feature components)
  */
 export default function StudentArea({ userName, userAvatar, children }: StudentAreaProps) {
-  // UI state
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { theme, toggleTheme } = useThemeMode();
+  const { isOpen: isAboutOpen, openAbout, closeAbout } = useAboutModal();
+  const { isOpen: isClassroomOpen, classroom, closeClassroom } = useClassroomView();
 
-  // Derived state
+  const handleBrandClick = () => {
+    if (isAboutOpen) {
+      closeAbout();
+    }
+  };
+
   const userInitial = useMemo(() => {
     return userName?.trim()?.charAt(0)?.toUpperCase() || 'U';
   }, [userName]);
 
-  // Logo path based on theme
+  // Fechar sidebar mobile quando sala abrir
+  useEffect(() => {
+    if (isClassroomOpen && isMobileSidebarOpen) {
+      setIsMobileSidebarOpen(false);
+    }
+  }, [isClassroomOpen, isMobileSidebarOpen]);
+
   const logoPath = theme === 'dark' ? '/logo/logo-icon-dark.png' : '/logo/logo-icon-ligth.png';
 
   return (
@@ -48,6 +62,7 @@ export default function StudentArea({ userName, userAvatar, children }: StudentA
       header={
         <AppHeader
           logo={logoPath}
+          onLogoClick={handleBrandClick}
           userBadge={
             <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800 dark:bg-blue-900 dark:text-blue-200">
               Estudante
@@ -71,12 +86,13 @@ export default function StudentArea({ userName, userAvatar, children }: StudentA
                 )}
               </button>
 
-              <Link
-                href="/quem-somos"
+              <button
+                onClick={isAboutOpen ? closeAbout : openAbout}
                 className="hidden text-sm font-medium text-gray-600 transition-colors hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 md:block"
+                type="button"
               >
-                Quem Somos
-              </Link>
+                {isAboutOpen ? 'Fechar' : 'Sobre'}
+              </button>
             </>
           }
           mobileMenuButton={
@@ -121,6 +137,13 @@ export default function StudentArea({ userName, userAvatar, children }: StudentA
           open={settingsOpen}
           onClose={() => setSettingsOpen(false)}
         />
+      }
+      about={
+        isClassroomOpen ? (
+          <ClassroomPageModal classroom={classroom} onClose={closeClassroom} />
+        ) : (
+          isAboutOpen && <AboutModal />
+        )
       }
     >
       {children}

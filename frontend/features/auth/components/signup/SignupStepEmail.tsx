@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { SignupFormData } from "../../types/auth.types"
 import { useEmailValidation } from "../../hooks/useEmailValidation"
+import { useNotification } from "@/lib/hooks/useNotification"
 
 type Props = {
   form: SignupFormData
@@ -15,6 +16,7 @@ export function SignupStepEmail({ form, setForm, next }: Props) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const { error: errorToast } = useNotification()
 
   const {
     emailStatus,
@@ -30,24 +32,32 @@ export function SignupStepEmail({ form, setForm, next }: Props) {
 
     // Validações de campos vazios
     if (!form.email || !form.password || !form.confirmPassword) {
-      setError("Preencha todos os campos")
+      const msg = "Preencha todos os campos"
+      setError(msg)
+      errorToast(msg)
       return
     }
 
     // Validação de formato de email
     if (!validateEmailFormat(form.email)) {
-      setError("Email inválido")
+      const msg = "Email inválido"
+      setError(msg)
+      errorToast(msg)
       return
     }
 
     // Validação de senha
     if (form.password.length < 6) {
-      setError("A senha deve ter no mínimo 6 caracteres")
+      const msg = "A senha deve ter no mínimo 6 caracteres"
+      setError(msg)
+      errorToast(msg)
       return
     }
 
     if (form.password !== form.confirmPassword) {
-      setError("As senhas não coincidem")
+      const msg = "As senhas não coincidem"
+      setError(msg)
+      errorToast(msg)
       return
     }
 
@@ -57,14 +67,18 @@ export function SignupStepEmail({ form, setForm, next }: Props) {
       const availability = await checkEmailAvailability(form.email)
 
       if (!availability.available) {
-        setError("Email já cadastrado. Por favor, use outro email.")
+        const msg = "Email já cadastrado. Por favor, use outro email."
+        setError(msg)
+        errorToast(msg)
         return
       }
 
       // Email disponível e validações OK - avança para próximo passo
       next()
-    } catch {
-      setError("Erro ao verificar email. Tente novamente.")
+    } catch (err) {
+      const msg = "Erro ao verificar email. Tente novamente."
+      setError(msg)
+      errorToast(msg)
     } finally {
       setLoading(false)
     }

@@ -6,8 +6,8 @@ import MessageList from '@/features/chat/components/MessageList';
 import MessageInput from '@/features/chat/components/MessageInput';
 import Footer from '@/shared/layout/Footer';
 
-function formatRemainingTime(ms: number): string {
-  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+function formatRemainingTime(totalSecondsInput: number): string {
+  const totalSeconds = Math.max(0, Math.floor(totalSecondsInput));
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
   const s = totalSeconds % 60;
@@ -29,7 +29,7 @@ export default function HomeChatWindow() {
 
   return (
     <div className="flex flex-col flex-1 w-full overflow-hidden bg-white dark:bg-gray-900">
-      <MessageList messages={messages} isLoading={loading} />
+      <MessageList messages={messages} />
 
       {limitReached && (
         <div className="p-4 text-red-500 text-sm text-center border-t border-red-300">

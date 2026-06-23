@@ -2,6 +2,8 @@ import type { ChatMessage, PublicChatResponse } from '../types/chat.types';
 import { api } from '@/lib/api';
 import type { Conversation, Message } from '@/lib/types';
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://127.0.0.1:8000';
+
 const CONVERSATIONS_ENDPOINT = '/api/conversations';
 
 export type ChatRateLimitError = {
@@ -196,20 +198,28 @@ export async function streamPublicMessage(
   history: ChatMessage[],
   onToken: (token: string) => void
 ): Promise<void> {
-  const response = await fetch('/api/chat/public/stream', {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ 
-      message: text, 
-      history: history.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      }))
-    }),
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${BACKEND_URL}/api/v1/chat/stream`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        content: text,
+        text,
+        history: history.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+        })),
+      }),
+    });
+  } catch (error) {
+    console.error('Falha ao conectar no backend de chat público:', error);
+    throw new Error('Não foi possível conectar ao backend de chat. Verifique se ele está rodando em http://127.0.0.1:8000.');
+  }
 
   if (!response.ok) {
     const status = response.status;
@@ -231,7 +241,23 @@ export async function streamPublicMessage(
       }
     }
     
-    throw new Error(`Erro ao enviar mensagem: ${status}`);
+    let detail = `Erro ao enviar mensagem: ${status}`;
+
+    try {
+      const errorData = await response.json();
+      detail = errorData.detail || errorData.error || detail;
+    } catch {
+      try {
+        const errorText = await response.text();
+        if (errorText) {
+          detail = errorText;
+        }
+      } catch {
+        // Mantém a mensagem padrão quando não for possível ler o corpo.
+      }
+    }
+
+    throw new Error(detail);
   }
 
   if (!response.body) {

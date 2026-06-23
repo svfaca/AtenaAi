@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
+import { createPortal } from "react-dom"
 
 type Props = {
   open: boolean
@@ -10,6 +11,12 @@ type Props = {
 }
 
 export function Modal({ open, onClose, children, maxWidth = "md" }: Props) {
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
   // Prevenir scroll do body quando modal está aberto
   useEffect(() => {
     if (open) {
@@ -40,7 +47,7 @@ export function Modal({ open, onClose, children, maxWidth = "md" }: Props) {
     }
   }, [open, onClose])
 
-  if (!open) return null
+  if (!open || !isMounted) return null
 
   const maxWidthClass = {
     sm: "max-w-sm",
@@ -49,7 +56,7 @@ export function Modal({ open, onClose, children, maxWidth = "md" }: Props) {
     xl: "max-w-xl",
   }[maxWidth]
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-auto">
       {/* Overlay */}
       <div
@@ -67,6 +74,7 @@ export function Modal({ open, onClose, children, maxWidth = "md" }: Props) {
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

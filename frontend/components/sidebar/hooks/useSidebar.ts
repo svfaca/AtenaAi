@@ -19,7 +19,7 @@ import { useState, useCallback } from 'react'
  * ✓ Reutilizável em múltiplos componentes
  * ✓ Não depende de store externo
  */
-interface UseSidebarReturn {
+export interface UseSidebarReturn {
   isCollapsed: boolean
   isMobileOpen: boolean
   toggleCollapsed: () => void

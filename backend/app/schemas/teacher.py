@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import date
+from datetime import date, datetime
 
 
 # =========================
@@ -11,6 +11,35 @@ class StudentResponse(BaseModel):
     full_name: str
     email: str
 
+    class Config:
+        from_attributes = True
+
+
+# 🆕 CLASSROOM MEMBER SCHEMA
+# =========================
+class ClassroomMemberCreate(BaseModel):
+    """Schema para criar/adicionar membro à sala"""
+    user_id: int
+    role: str = "student"  # admin, moderator, teacher, student
+
+
+class ClassroomMemberUpdate(BaseModel):
+    """Schema para atualizar role de membro"""
+    role: str
+
+
+class ClassroomMemberResponse(BaseModel):
+    """Schema para resposta de membro"""
+    id: int
+    classroom_id: int
+    user_id: int
+    role: str
+    joined_at: datetime
+    
+    # Extra info (opcional)
+    user_name: Optional[str] = None
+    user_email: Optional[str] = None
+    
     class Config:
         from_attributes = True
 
@@ -77,6 +106,22 @@ class ClassroomSimpleResponse(BaseModel):
     code: str
     student_count: int = 0
 
+    class Config:
+        from_attributes = True
+
+
+# 🆕 CLASSROOM WITH MEMBERS (novo schema unificado)
+# =========================
+class ClassroomWithMembersResponse(BaseModel):
+    """Schema para sala com membros (roles granulares)"""
+    id: int
+    name: str
+    code: str
+    created_at: datetime
+    updated_at: datetime
+    teacher_id: int
+    members: List[ClassroomMemberResponse] = []
+    
     class Config:
         from_attributes = True
 

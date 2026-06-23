@@ -2,48 +2,42 @@
  * 🏫 Sala com ID
  * 
  * 🔒 Server Component
- * ✅ Busca mensagens da sala no servidor
- * ✅ Valida acesso à sala
- * ✅ Pass to Client Component
+ * ✅ Valida acesso
+ * ⚠️ Fallback temporário até concluir SalaChatWindow + server API
  */
 
-import { getClassroomDetails, getClassroomMessages } from "@/lib/server-api";
-import { SalaChatWindow } from "@/components/student/SalaChatWindow";
-import { notFound } from "next/navigation";
+import { redirect } from 'next/navigation';
+import { getCurrentUser } from '@/features/auth/services/auth.service';
+import StudentLayout from '@/features/student/components/StudentLayout';
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export async function generateMetadata({ params }: Props) {
-  try {
-    const classroom = await getClassroomDetails(params.id);
-    return {
-      title: `${classroom.name} - AtenaAI`
-    };
-  } catch {
-    return {
-      title: "Sala - AtenaAI"
-    };
-  }
+  const { id } = await params;
+
+  return {
+    title: `Sala ${id} - AtenaAI`
+  };
 }
 
 export default async function SalaPage({ params }: Props) {
-  try {
-    // ✅ Buscar dados da sala no servidor
-    const [classroom, messages] = await Promise.all([
-      getClassroomDetails(params.id),
-      getClassroomMessages(params.id)
-    ]);
+  const { id } = await params;
+  const userData = await getCurrentUser();
 
-    return (
-      <SalaChatWindow
-        classroom={classroom}
-        initialMessages={messages}
-      />
-    );
-  } catch (error) {
-    console.error("[SalaPage] Error:", error);
-    notFound();
+  if (!userData) {
+    redirect('/');
   }
+
+  return (
+    <StudentLayout>
+      <section className="p-6">
+        <h1 className="text-2xl font-semibold">Sala {id}</h1>
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          Esta tela esta em migracao. Enquanto isso, use o chat principal em /scholar.
+        </p>
+      </section>
+    </StudentLayout>
+  );
 }

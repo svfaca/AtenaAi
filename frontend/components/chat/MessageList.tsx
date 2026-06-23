@@ -1,11 +1,11 @@
 ﻿'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import TextMessage from './TextMessage';
-import TypingIndicator from './TypingIndicator';
+import TextMessage from '@/features/chat/components/TextMessage';
+import TypingIndicator from '@/features/chat/components/TypingIndicator';
 
 interface Message {
-  id: string;
+  id: string | number;
   content: string;
   role: 'user' | 'assistant';
   timestamp?: Date;

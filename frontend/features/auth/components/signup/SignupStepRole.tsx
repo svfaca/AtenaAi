@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { SignupFormData } from "../../types/auth.types"
+import { useNotification } from "@/lib/hooks/useNotification"
 
 type Props = {
   form: SignupFormData
@@ -12,12 +13,15 @@ type Props = {
 
 export function SignupStepRole({ form, setForm, next, back }: Props) {
   const [error, setError] = useState("")
+  const { error: errorToast } = useNotification()
 
   function handleContinue() {
     setError("")
 
     if (!form.role) {
-      setError("Selecione o tipo de conta")
+      const msg = "Selecione o tipo de conta"
+      setError(msg)
+      errorToast(msg)
       return
     }
 

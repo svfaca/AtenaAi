@@ -1,1 +1,2 @@
-export { AboutPageContent } from './sections/AboutPageContent'
+export { AboutModalProvider, useAboutModal } from './hooks/useAboutModal'
+export { AboutModal } from './components/AboutModal'

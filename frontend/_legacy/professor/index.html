@@ -77,70 +77,7 @@
             display: flex !important;
         }
     </style>
-    
-    <!-- 🔐 VERIFICAÇÃO SÍNCRONA - Bloqueia ANTES da renderização, sem esperar módulos -->
-    <script>
-        // Função síncrona - não usa async, executa imediatamente
-        (function() {
-            const token = localStorage.getItem("access_token");
-            const userStr = localStorage.getItem("user");
-            const pathname = window.location.pathname;
-            
-            // Rotas protegidas e seus roles permitidos
-            const routePermissions = {
-                "/estudante": ["student"],
-                "/professor": ["teacher", "admin"],
-                "/sala": ["teacher", "admin"],
-                "/admin": ["admin"]
-            };
-            
-            const roleDefaultPath = {
-                "student": "/frontend/estudante",
-                "teacher": "/frontend/professor",
-                "admin": "/frontend/professor"
-            };
-            
-            function getCurrentRoute(path) {
-                for (const route of Object.keys(routePermissions)) {
-                    if (path.includes(route)) return route;
-                }
-                return null;
-            }
-            
-            function isProtectedRoute(path) {
-                return getCurrentRoute(path) !== null;
-            }
-            
-            // Se não está autenticado e tenta acessar rota protegida
-            if (!token && isProtectedRoute(pathname)) {
-                console.warn("[🔐 PRE-CHECK] ❌ Não autenticado em rota protegida → Bloqueando e redirecionando");
-                window.location.replace("/frontend/login/index.html");
-                return;
-            }
-            
-            // Se está autenticado, verificar permissões
-            if (token && isProtectedRoute(pathname)) {
-                try {
-                    const user = JSON.parse(userStr || '{}');
-                    const currentRoute = getCurrentRoute(pathname);
-                    const allowedRoles = routePermissions[currentRoute];
-                    
-                    // Se o role não é permitido nesta rota
-                    if (user.role && !allowedRoles.includes(user.role)) {
-                        console.warn(`[🔐 PRE-CHECK] ❌ Role '${user.role}' não permitido em '${currentRoute}' → Redirecionando`);
-                        const targetPath = roleDefaultPath[user.role] || "/frontend/estudante";
-                        window.location.replace(targetPath + "/index.html");
-                        return;
-                    }
-                } catch (e) {
-                    console.error("[🔐 PRE-CHECK] Erro ao parsear user:", e);
-                }
-            }
-            
-            // Se passou, marca como liberado para o guard.js
-            window.__authAllowedByPreCheck = true;
-        })();
-    </script>
+  
     
     <script type="module" src="../js/middleware/guard.js"></script>
   <script>

@@ -4,9 +4,11 @@ import { useTransition, useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { toast } from 'sonner';
 import type { Session } from '@/lib/types/auth';
 import { useThemeMode } from '@/lib/hooks/useThemeMode';
+import { useAboutModal } from '@/features/about';
+import { useNotification } from '@/lib/hooks/useNotification';
+import { useAuth } from '@/features/auth';
 
 type PublicHeaderProps = {
   variant: 'public';
@@ -30,17 +32,29 @@ export default function Header(props: HeaderProps) {
 function ProtectedVariantHeader({ session }: { session: Session }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const { success, error: errorToast } = useNotification();
+  const { logout } = useAuth();
 
   const handleLogout = () => {
     startTransition(async () => {
       try {
-        const response = await fetch('/api/auth/logout', { method: 'POST' });
-        if (response.ok) {
-          toast.success('Até logo!');
-          router.push('/');
-        }
+        console.log('[Header] 1. Iniciando logout...');
+        await logout();
+        console.log('[Header] 2. Logout backend completo');
+        
+        console.log('[Header] 3. Disparando toast success...');
+        success('Até logo!');
+        console.log('[Header] 4. Toast disparado');
+        
+        // Aguarda mais tempo para o toast ser renderizado antes de redirecionar
+        console.log('[Header] 5. Aguardando 2s...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        console.log('[Header] 6. Redirecionando para /...');
+        router.push('/');
       } catch (error) {
-        toast.error('Erro ao fazer logout');
+        console.error('[Header] Erro no logout:', error);
+        errorToast('Erro ao fazer logout');
       }
     });
   };
@@ -100,18 +114,27 @@ function ProtectedVariantHeader({ session }: { session: Session }) {
 function PublicVariantHeader() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { theme, toggleTheme } = useThemeMode();
+  const { isOpen: isAboutOpen, openAbout, closeAbout } = useAboutModal();
   const isDark = theme === 'dark';
 
+  const handleBrandClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (isAboutOpen) {
+      event.preventDefault();
+      closeAbout();
+    }
+  };
+
   return (
-    <header className="h-16 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 shrink-0 bg-white dark:bg-gray-900 z-10">
+    <header className="relative z-30 h-16 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 shrink-0 bg-white dark:bg-gray-900">
       <div className="flex items-center gap-3">
-        <Link href="/" className="flex items-center text-xl font-bold">
+        <Link href="/" onClick={handleBrandClick} className="flex items-center text-xl font-bold">
           <Image
             src={isDark ? '/logo/logo-icon-dark.png' : '/logo/logo-icon-ligth.png'}
             alt="AtenaAI"
             width={32}
             height={32}
             className="mr-2"
+            style={{ width: 'auto', height: 'auto' }}
           />
           <span className="text-gray-900 dark:text-gray-100">AtenaAI</span>
         </Link>
@@ -138,9 +161,13 @@ function PublicVariantHeader() {
         </button>
 
         <div className="hidden md:flex items-center gap-2">
-          <Link href="/quem-somos" className="text-sm font-medium hover:underline px-2">
-            Quem somos
-          </Link>
+          <button
+            onClick={isAboutOpen ? closeAbout : openAbout}
+            type="button"
+            className="text-sm font-medium hover:underline px-2"
+          >
+            {isAboutOpen ? 'Fechar' : 'Sobre'}
+          </button>
           <Link
             href="/login"
             className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
@@ -173,12 +200,20 @@ function PublicVariantHeader() {
       {isMobileMenuOpen && (
         <div className="absolute top-16 left-0 w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 z-50 p-4 shadow-lg md:hidden">
           <div className="flex flex-col gap-3">
-            <Link
-              href="/quem-somos"
-              className="text-sm font-medium py-2 border-b border-gray-100 dark:border-gray-800"
+            <button
+              onClick={() => {
+                if (isAboutOpen) {
+                  closeAbout();
+                } else {
+                  openAbout();
+                }
+                setIsMobileMenuOpen(false);
+              }}
+              type="button"
+              className="text-left text-sm font-medium py-2 border-b border-gray-100 dark:border-gray-800"
             >
-              Quem somos
-            </Link>
+              {isAboutOpen ? 'Fechar' : 'Sobre'}
+            </button>
             <Link
               href="/login"
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium text-center"

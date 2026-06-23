@@ -1,7 +1,7 @@
 'use client'
 
-import Link from 'next/link'
 import { Sidebar } from '@/components/sidebar'
+import { useAboutModal } from '@/features/about'
 
 type StudentSidebarProps = {
   userName: string
@@ -14,21 +14,8 @@ type StudentSidebarProps = {
 
 /**
  * StudentSidebar - Feature layer wrapper
- * 
- * Wraps the new professional Sidebar component
- * Maintains compatibility with StudentLayout while using new architecture
- * 
- * Responsibilities:
- * - Adaptar props do StudentLayout para novo Sidebar
- * - CrIAr footer com perfil/logout
- * - Composição com ConversationsList e RoomsList (já dentro do Sidebar)
- * 
- * Benefícios da refatoração:
- * ✓ Usa novo sistema de componentes organizados
- * ✓ Sem duplicação de estado (isCollapsed/isMobileOpen centralizados)
- * ✓ Uma única sidebar no sistema
- * ✓ Mobile e desktop no mesmo componente
- * ✓ Lógica separada por domínio
+ *
+ * Wraps the new professional Sidebar component.
  */
 export default function StudentSidebar({
   userName,
@@ -38,10 +25,19 @@ export default function StudentSidebar({
   onOpenSettings,
   onLogout,
 }: StudentSidebarProps) {
-  // Footer content - perfil e logout
+  const { isOpen: isAboutOpen, openAbout, closeAbout } = useAboutModal()
+
+  const handleAboutClick = () => {
+    onCloseMobile()
+    if (isAboutOpen) {
+      closeAbout()
+    } else {
+      openAbout()
+    }
+  }
+
   const footerContent = (
     <div className="space-y-2">
-      {/* Botão de configurações */}
       <button
         onClick={onOpenSettings}
         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
@@ -64,7 +60,6 @@ export default function StudentSidebar({
         <span>Configurações</span>
       </button>
 
-      {/* Botão de logout */}
       <button
         onClick={onLogout}
         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
@@ -81,9 +76,8 @@ export default function StudentSidebar({
         <span>Sair</span>
       </button>
 
-      {/* Link para Quem Somos */}
-      <Link
-        href="/quem-somos"
+      <button
+        onClick={handleAboutClick}
         className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
       >
         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -94,10 +88,9 @@ export default function StudentSidebar({
             strokeWidth={2}
           />
         </svg>
-        <span>Quem Somos</span>
-      </Link>
+        <span>{isAboutOpen ? 'Fechar' : 'Sobre'}</span>
+      </button>
 
-      {/* Versão */}
       <p className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">v0.1.0</p>
     </div>
   )

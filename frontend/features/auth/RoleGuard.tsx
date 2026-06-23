@@ -6,7 +6,7 @@ import { useAuth } from "./hooks/useAuth"
 import type { AuthUser } from "./types/auth.types"
 
 type RoleGuardProps = {
-  role: Extract<AuthUser["role"], "student" | "teacher">
+  role: "student" | "teacher"
   children: React.ReactNode
 }
 

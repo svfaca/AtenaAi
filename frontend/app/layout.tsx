@@ -1,6 +1,8 @@
-import { Toaster } from 'sonner';
 import { AuthProvider } from '@/features/auth';
+import { AboutModalProvider } from '@/features/about';
+import { ClassroomViewProvider } from '@/features/classrooms/hooks/useClassroomView';
 import ThemeToggle from '@/shared/ui/ThemeToggle';
+import ToastContainer from '@/shared/ui/ToastContainer';
 import '@/styles/globals.css';
 
 export default function RootLayout({
@@ -64,9 +66,13 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <AuthProvider>
-          {children}
-          <ThemeToggle />
-          <Toaster position="top-right" />
+          <AboutModalProvider>
+            <ClassroomViewProvider>
+              {children}
+              <ThemeToggle />
+              <ToastContainer />
+            </ClassroomViewProvider>
+          </AboutModalProvider>
         </AuthProvider>
       </body>
     </html>

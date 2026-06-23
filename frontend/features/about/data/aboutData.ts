@@ -1,62 +1,42 @@
-export type AboutContact = {
-  label: string
-  value: string
-  href: string
-}
-
 export const aboutData = {
   hero: {
-    title: 'Aprenda mais rapido com inteligencia artificial',
+    title: 'AtenaAI - aprendizado acelerado com inteligencia artificial.',
     subtitle:
-      'AtenaAI e uma plataforma educacional para potencializar o aprendizado de estudantes e professores com apoio etico de IA.',
+      'Uma plataforma conversacional que combina tutoria inteligente, contexto de sala de aula e adaptacao de trilhas para apoiar alunos e professores.',
   },
   problem: {
-    title: 'O problema atual da educacao',
-    paragraphs: [
-      'O ensino tradicional ainda possui baixa personalizacao para ritmos e estilos diferentes de aprendizagem.',
-      'Muitas ferramentas de IA entregam respostas prontas e enfraquecem o desenvolvimento do pensamento critico.',
+    title: 'O problema da aprendizagem tradicional',
+    points: [
+      'Baixa personalizacao: turmas heterogeneas recebem o mesmo ritmo e o mesmo formato de explicacao.',
+      'Ritmo rigido: estudantes com dificuldades ficam para tras e estudantes avancados perdem engajamento.',
+      'Baixo envolvimento: modelos passivos dificultam autonomia, curiosidade e continuidade do estudo.',
     ],
   },
-  solution: {
-    title: 'A solucao da AtenaAI',
-    text: 'Uma IA que explica, orienta e adapta a jornada sem substituir o papel do professor e sem retirar autonomia do estudante.',
+  product: {
+    title: 'Como a AtenaAI atua no dia a dia',
+    description:
+      'AtenaAI funciona como um tutor de IA integrado ao contexto escolar: conversa com o aluno, identifica lacunas e sugere proximos passos de forma clara e progressiva.',
+    capabilities: [
+      'Tutor de IA para explicar conceitos e revisar exercicios em linguagem acessivel.',
+      'Aprendizagem adaptativa com respostas ajustadas ao nivel e ao historico do estudante.',
+      'Turmas e salas para apoiar rotinas de estudo com mediação de professores.',
+      'Fluxo conversacional para aprender fazendo perguntas, testando hipoteses e refletindo.',
+    ],
   },
-  mission: 'Democratizar o acesso a uma educacao assistida por IA, responsavel e centrada no aprendizado real.',
-  vision: 'Ser referencia em apoio educacional inteligente para escolas, universidades e projetos de formacao continua.',
+  mission:
+    'Democratizar o acesso a aprendizado assistido por inteligencia artificial, mantendo a educacao humana, inclusiva e orientada por resultados reais.',
+  vision:
+    'Transformar a forma como alunos aprendem e professores ensinam com apoio de tecnologia conversacional confiavel.',
   values: [
-    'Etica e transparencia no uso da IA',
-    'Aprendizado ativo com pensamento critico',
-    'Professor como protagonista pedagogico',
-    'Tecnologia acessivel e inclusiva',
+    'Acessibilidade e inclusao no acesso ao conhecimento.',
+    'Aprendizado continuo com autonomia e pensamento critico.',
+    'Tecnologia a servico da educacao e nao como substituta do processo pedagogico.',
   ],
-  creator: {
-    name: 'Savio Emmanuel',
-    bio: 'Criado por Savio Emmanuel, estudante de Ciencias Computacionais, com o objetivo de democratizar o acesso a educacao assistida por IA.',
-    imageSrc: '/assets/images/pic.png',
-  },
   cta: {
-    title: 'Junte-se a esta ideia',
-    description: 'Crie sua conta e descubra uma nova forma de aprender com responsabilidade e autonomia.',
-    signupButton: 'Comecar agora',
-    loginButton: 'Entrar',
-    backButton: 'Voltar ao dashboard',
+    title: 'Explore a plataforma',
+    description:
+      'Abra uma conversa com a IA, experimente uma trilha e veja como o aprendizado orientado por dialogo acelera a evolucao.',
+    actionLabel: 'Comecar a conversar',
   },
-  footer: '© 2026 AtenaAI - Projeto educacional e experimental.',
-  contacts: [
-    {
-      label: 'Email',
-      value: 'savioemmanuelsc@gmail.com',
-      href: 'mailto:savioemmanuelsc@gmail.com',
-    },
-    {
-      label: 'GitHub',
-      value: '@svfaca',
-      href: 'https://github.com/svfaca',
-    },
-    {
-      label: 'LinkedIn',
-      value: 'Savio Emmanuel',
-      href: 'https://www.linkedin.com/in/savio-emmanuel/',
-    },
-  ] as AboutContact[],
+  footer: 'AtenaAI - educacao potencializada por IA com foco em aprendizagem real.',
 }

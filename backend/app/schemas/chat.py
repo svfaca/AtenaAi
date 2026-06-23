@@ -1,6 +1,11 @@
 from pydantic import BaseModel
 from typing import List, Optional, Any
 
+
+class ChatHistoryMessage(BaseModel):
+    role: str
+    content: str
+
 class MessageCreate(BaseModel):
     # ✅ CORREÇÃO: Tornamos content opcional e adicionamos text
     # Isso permite que o backend aceite o JSON vindo do JS sem dar erro 422
@@ -12,6 +17,7 @@ class MessageCreate(BaseModel):
     # IDs (usados apenas se estiver logado)
     conversation_id: Optional[int] = None
     user_id: Optional[int] = None
+    session_id: Optional[str] = None
 
     # Campos de perfil (opcionais)
     user_email: Optional[str] = None
@@ -26,7 +32,8 @@ class MessageCreate(BaseModel):
     history_limit: Optional[int] = 10
 
     # Histórico temporário (para modo convidado)
-    history: Optional[List[dict]] = None 
+    history: Optional[List[dict]] = None
+    messages: Optional[List[ChatHistoryMessage]] = None
 
 # --- Restante dos Schemas permanece igual ---
 class MessageResponse(BaseModel):

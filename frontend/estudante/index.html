@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <title>AtenaAI — Chat</title>
+
+    <!-- ⚡ Aplicar tema ANTES de qualquer renderização (evita flash) -->
+    <script>
+    (function() {
+        const theme = localStorage.getItem('theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.add('light');
+        }
+    })();
+    </script>
+
+    <!-- 💡 ATUALIZAR LOGO ANTES DO RENDER (evita flash) -->
+    <script>
+    (function() {
+        const isDark = document.documentElement.classList.contains('dark');
+        // Função para atualizar logos assim que o DOM estiver pronto
+        function updateLogosSync() {
+            document.querySelectorAll('[data-theme-logo]').forEach(img => {
+                const basePath = '../assets/logo/';
+                const fileName = isDark ? 'logo-icon-dark.png' : 'logo-icon-ligth.png';
+                img.src = basePath + fileName;
+            });
+        }
+        // Executar assim que possível
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', updateLogosSync);
+        } else {
+            updateLogosSync();
+        }
+    })();
+    </script>
+
+    <script>
+    function setVH() {
+      const vh = window.visualViewport
+        ? window.visualViewport.height * 0.01
+        : window.innerHeight * 0.01;
+
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+
+    setVH();
+    window.addEventListener('load', setVH);
+    window.addEventListener('resize', setVH);
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', setVH);
+    }
+</script>
+
+    <!-- 🔐 BLOCKER CSS - Bloqueia página imediatamente, ANTES do body ser renderizado -->
+    <style>
+        /* Bloquear TUDO por padrão até validação */
+        body {
+            display: none !important;
+        }
+        /* Permitir apenas quando autorizado */
+        body.auth-allowed {
+            display: flex !important;
+        }
+    </style>
+    
+    <!-- 🔐 VERIFICAÇÃO SÍNCRONA - Removida (usar cookies do guard.js em vez disso) -->
+    <script>
+        window.__authAllowedByPreCheck = true;
+    </script>
+
+    <!-- 🔐 GUARD - Executa ANTES de qualquer renderização do body -->
+    <script type="module" src="../js/middleware/guard.js"></script>
+
+    <link rel="icon" type="image/x-icon" href="../assets/logo/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/logo/favicon-32x32.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Sistema de Toast Centralizado -->
+    <script type="module" src="../js/ui/toast.js"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } }
+        };
+        
+        if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
+    <style>
+        /* GERAL */
+        html, body {
+    overflow: hidden;
+}
+        
+        /* CHAT CONTAINER */
+        .chat-container { flex: 1; overflow-y: auto; overflow-x: hidden; }
+        
+        /* SCROLLBARS */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: #CBD5E1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: #94A3B8; }
+        .dark ::-webkit-scrollbar-thumb { background-color: #374151; }
+        .dark ::-webkit-scrollbar-thumb:hover { background-color: #4B5563; }
+        textarea::-webkit-scrollbar { width: 0px; background: transparent; }
+
+        /* MENSAGENS */
+        .message { max-width: 85%; animation: fadeIn 0.25s ease-in-out; word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap; }
+        .message p { margin-bottom: 0.5rem; margin-top: 0; }
+        .message p:last-child { margin-bottom: 0; }
+        .message ul { margin-left: 1.2rem; margin-bottom: 0.5rem; list-style-type: disc; }
+        .message li { margin-bottom: 0.25rem; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* SIDEBAR */
+        #sidebar { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); width: 16rem; display: flex; flex-direction: column; background-color: #F9FAFB; border-right: 1px solid #E5E7EB; z-index: 40; }
+        .dark #sidebar { background-color: #1F2937; border-color: #374151; }
+        #sidebar.sidebar-collapsed { width: 4.5rem !important; }
+        #sidebar.sidebar-collapsed .sidebar-expanded-content { display: none !important; }
+        #sidebar.sidebar-collapsed .sidebar-collapsed-content { display: flex !important; flex-direction: column; align-items: center; width: 100%; }
+        #sidebar:not(.sidebar-collapsed) .sidebar-collapsed-content { display: none !important; }
+
+        /* 🟢 MENU DE OPÇÕES (3 PONTOS) - FIX VISIBILIDADE MOBILE */
+        .conv-item-container { position: relative; }
+        @media (min-width: 768px) {
+            .dots-btn { opacity: 0; transition: opacity 0.2s; }
+            .conv-item-container:hover .dots-btn { opacity: 1; }
+        }
+        @media (max-width: 767px) {
+            .dots-btn { opacity: 1 !important; } /* Sempre visível no mobile */
+        }
+
+        .conv-options-menu {
+            display: none;
+            position: absolute;
+            right: 0.5rem;
+            top: 2.5rem;
+            z-index: 50;
+            min-width: 140px;
+            background-color: white;
+            border: 1px solid #E5E7EB;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .dark .conv-options-menu { background-color: #1F2937; border-color: #374151; }
+        .conv-options-menu.active { display: block; }
+
+        /* Mobile Layout */
+        @media (max-width: 767px) {
+            #sidebar { position: fixed; left: 0; top: 0; height: 100%; z-index: 50; transform: translateX(-100%); width: 16rem !important; }
+            #sidebar.mobile-open { transform: translateX(0); }
+            #sidebar.sidebar-collapsed { width: 16rem !important; }
+            #sidebar.sidebar-collapsed .sidebar-expanded-content { display: block !important; }
+            #sidebar.sidebar-collapsed .sidebar-collapsed-content { display: none !important; }
+            #sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 45; }
+            #sidebar-overlay.active { display: block; }
+            #sidebar-toggle { display: none !important; }
+        }
+
+        /* Classroom expandable */
+        .classroom-item { transition: all 0.2s ease; }
+        .classroom-header { cursor: pointer; }
+        .classroom-header:hover { background: #F3F4F6; }
+        .dark .classroom-header:hover { background: #374151; }
+        .classroom-menu { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .classroom-menu.expanded { max-height: 500px; }
+        .classroom-toggle { transition: transform 0.3s ease; }
+        .classroom-toggle.expanded { transform: rotate(90deg); }
+
+        /* Modais */
+        .settings-modal { position: fixed; right: 0; top: 0; width: 100%; max-width: 500px; height: 100%; background: white; z-index: 60; transform: translateX(100%); transition: transform 0.3s ease-in-out; box-shadow: -2px 0 10px rgba(0,0,0,0.1); }
+        .settings-modal.active { transform: translateX(0); }
+        .dark .settings-modal { background: #1F2937; }
+        .settings-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 55; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .settings-modal-overlay.active { opacity: 1; pointer-events: auto; }
+    </style>
+</head>
+
+<body class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 flex flex-col overflow-hidden"
+      style="height: calc(var(--vh, 1vh) * 100);">
+
+
+<div id="sidebar-overlay"></div>
+
+<div class="flex flex-1 overflow-hidden min-h-0">
+
+    <aside id="sidebar" class="sidebar-collapsed flex flex-col bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+        <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between h-16 shrink-0">
+            <div id="user-avatar" onclick="if(window.innerWidth >= 768 && document.getElementById('sidebar').classList.contains('sidebar-collapsed')) document.getElementById('sidebar-toggle').click()" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold select-none relative cursor-pointer hover:opacity-90 transition-opacity">
+                <img loading="lazy" id="avatar-image" class="w-full h-full object-cover hidden rounded-full" src="" alt="Avatar">
+                <span id="avatar-initial">U</span>
+            </div>
+            <div class="sidebar-expanded-content flex-1 ml-3 overflow-hidden">
+                <p id="user-name" class="font-semibold text-sm truncate">Carregando...</p>
+                <p id="user-role" class="text-xs text-gray-500 truncate">Carregando...</p>
+            </div>
+            <button id="sidebar-toggle" class="sidebar-expanded-content p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto overflow-x-hidden relative">
+            <div class="sidebar-expanded-content p-3 space-y-3">
+                <!-- Salas Section -->
+                <div class="flex items-center justify-between px-1">
+                    <p class="text-xs uppercase text-gray-500 font-bold tracking-wider" data-i18n="chat.classrooms">Salas</p>
+                    <button id="add-classroom-btn" class="text-xs text-blue-600 font-medium hover:text-blue-700 transition-colors flex items-center gap-1" title="Entrar em uma sala">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        <span data-i18n="chat.addClassroom">Entrar</span>
+                    </button>
+                </div>
+                <div class="relative mt-2">
+                    <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"/></svg>
+                    <input id="classroom-search" type="search" autocomplete="off" class="w-full pl-9 pr-3 py-2 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="Buscar salas" data-i18n-placeholder="chat.searchClassrooms">
+                </div>
+                <ul id="classroom-list" class="space-y-1 pb-2" style="transition: opacity 0.2s ease;">
+                </ul>
+
+                <div class="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+
+                <!-- Conversas Section -->
+                <div class="flex items-center justify-between px-1">
+                    <p class="text-xs uppercase text-gray-500 font-bold tracking-wider" data-i18n="chat.conversations">Conversas</p>
+                    <button id="new-conversation" class="text-xs text-blue-600 font-medium hover:text-blue-700 transition-colors flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        <span data-i18n="chat.newConversation">Nova</span>
+                    </button>
+                </div>
+                <div class="relative mt-2">
+                    <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"/></svg>
+                    <input id="conversation-search" type="search" autocomplete="off" class="w-full pl-9 pr-3 py-2 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="Buscar conversas" data-i18n-placeholder="chat.searchConversations">
+                </div>
+                <ul id="conversation-list" class="space-y-1 pb-4" style="transition: opacity 0.2s ease;"></ul>
+            </div>
+            <div class="sidebar-collapsed-content pt-4 w-full flex flex-col items-center gap-3">
+                <button onclick="document.getElementById('add-classroom-btn').click()" class="p-2 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Entrar em uma sala">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                </button>
+                <button onclick="document.getElementById('new-conversation').click()" class="p-2 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Nova Conversa">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="border-t border-gray-200 dark:border-gray-700 p-2 shrink-0">
+            <div class="sidebar-expanded-content space-y-1 px-1">
+                <a href="../quem-somos" data-i18n="navigation.about" class="w-full text-left text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 py-2 px-2 rounded flex items-center gap-2 transition-colors">Quem Somos</a>
+                
+                <button id="settings-btn" data-i18n="settings.title" class="w-full text-left text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 py-2 px-2 rounded flex items-center gap-2 transition-colors">Configurações</button>
+                <button id="logout-btn" data-i18n="navigation.logout" class="w-full text-left text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 py-2 px-2 rounded flex items-center gap-2 transition-colors">Sair</button>
+            </div>
+            <div class="sidebar-collapsed-content flex flex-col items-center gap-2 py-2">
+                <button id="collapsed-settings" class="icon-btn-collapsed" data-i18n-title="settings.title" title="Configurações"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></button>
+                <button id="collapsed-logout" class="icon-btn-collapsed logout" data-i18n-title="navigation.logout" title="Sair"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg></button>
+            </div>
+        </div>
+    </aside>
+
+    <div class="flex-1 flex flex-col relative w-full h-full">
+        <header class="h-16 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 shrink-0 bg-white dark:bg-gray-900 z-10">
+            <div class="flex items-center">
+                <button id="mobile-sidebar-btn" class="md:hidden p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 mr-3">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <a href="../estudante/" class="flex items-center text-xl font-bold text-gray-900 dark:text-gray-100">
+                    <img loading="lazy" src="../assets/logo/logo-icon-ligth.png" alt="AtenaAI" class="h-8 w-8 mr-2" data-theme-logo> AtenaAI
+                </a>
+                <span class="ml-2 px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">Estudante</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="theme-toggle" class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300">
+                    <svg id="light-icon" class="w-5 h-5 hidden dark:block" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/></svg>
+                    <svg id="dark-icon" class="w-5 h-5 block dark:hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+                </button>
+                <a href="../quem-somos" data-i18n="navigation.about" class="hidden md:block text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Quem Somos</a>
+            </div>
+        </header>
+
+        <div id="chat-messages" class="chat-container p-4 space-y-6 flex-1 bg-white dark:bg-gray-900">
+        </div>
+
+        <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shrink-0 z-20">
+            <form id="chat-form" class="flex items-end gap-3">
+                <!-- Attachment Button -->
+                <button type="button" id="btn-attach" class="p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors flex-shrink-0" title="Anexar arquivo">
+                    <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                    </svg>
+                </button>
+                <!-- Text Input -->
+                <div class="flex-1 relative">
+                    <textarea id="user-input" rows="1" class="w-full px-4 py-3 pr-12 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl resize-none text-gray-700 dark:text-gray-200 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all max-h-32" placeholder="Envie uma mensagem..." data-i18n-placeholder="chat.sendMessage" oninput="this.style.height = ''; this.style.height = Math.min(this.scrollHeight, 128) + 'px'"></textarea>
+                    <!-- Emoji Button Inside Input -->
+                    <button type="button" id="btn-emoji" class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </button>
+                </div>
+                <!-- Send Button -->
+                <button type="submit" id="send-btn" class="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg id="send-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                    <svg id="loading-icon" class="w-5 h-5 animate-spin hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                </button>
+            </form>
+            <div class="text-center text-[10px] text-gray-400 py-2 mt-1" data-i18n="footer.copyright">© 2026 AtenaAI</div>
+        </div>
+    </div>
+</div>
+
+<div id="settings-modal-overlay" class="settings-modal-overlay"></div>
+<div id="settings-modal" class="settings-modal flex flex-col bg-white dark:bg-gray-800 h-full shadow-2xl">
+    <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center shrink-0">
+        <h2 class="text-xl font-bold text-gray-800 dark:text-white" data-i18n="settings.title">Configurações</h2>
+        <div class="flex gap-2">
+            <button id="sync-settings" class="text-blue-500 hover:text-blue-700 p-1" title="Sincronizar"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
+            <button id="close-settings" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+        </div>
+    </div>
+    <div class="flex-1 overflow-y-auto p-6">
+        <form id="settings-form" class="space-y-8">
+            <div class="space-y-4">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2" data-i18n="settings.profile">Perfil</h3>
+                <div class="flex items-center gap-4">
+                    <div class="flex flex-col items-center gap-2">
+                        <div class="w-20 h-20 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex items-center justify-center border-2 border-gray-300 dark:border-gray-600">
+                            <img loading="lazy" id="settings-preview" src="" alt="Preview" class="w-full h-full object-cover hidden">
+                            <span id="settings-initial" class="text-2xl font-bold text-gray-500">U</span>
+                        </div>
+                        <p class="text-xs text-gray-500" data-i18n="settings.preview">Preview</p>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" data-i18n="settings.profilePicture">Foto de Perfil</label>
+                        <input type="file" id="settings-avatar" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-gray-300">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="space-y-4">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2" data-i18n="settings.personalInfo">Informações Pessoais</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="md:col-span-2"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" data-i18n="settings.fullName">Nome Completo</label><input type="text" id="setting-name" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white p-2 border"></div>
+                    <div><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" data-i18n="settings.nickname">Apelido</label><input type="text" id="setting-nickname" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white p-2 border"></div>
+                    <div><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" data-i18n="settings.birthDate">Data de Nascimento</label><input type="date" id="setting-birthdate" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white p-2 border"></div>
+                    <div class="md:col-span-2"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" data-i18n="settings.emailEditable">Email (Editável)</label><input type="email" id="setting-email" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white p-2 border"></div>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+    <h3 class="text-lg font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2" data-i18n="settings.interestsTitle">Interesses Acadêmicos</h3>
+    <div class="p-3 border border-gray-200 dark:border-gray-700 rounded-md max-h-96 overflow-y-auto space-y-6">
+        
+        <div>
+            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-3 flex items-center gap-2" data-i18n="interests.exactsAndTechnology">
+                📐 Ciências Exatas e Tecnologia
+            </h4>
+            <div class="grid grid-cols-2 gap-3">
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="math" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.math">Matemática</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="statistics" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.statistics">Estatística</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="physics" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.physics">Física</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="chemistry" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.chemistry">Química</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="programming" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.programming">Programação</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="engineering" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.engineering">Engenharia</span>
+                </label>
+            </div>
+        </div>
+
+        <div>
+            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-3 flex items-center gap-2 border-t dark:border-gray-700 pt-4" data-i18n="interests.biologicalAndHealth">
+                🧬 Ciências Biológicas e Saúde
+            </h4>
+            <div class="grid grid-cols-2 gap-3">
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="biology" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.biology">Biologia</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="health" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.health">Saúde</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="anatomy" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.anatomy">Anatomia</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="pe" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.physicalEducation">Ed. Física</span>
+                </label>
+            </div>
+        </div>
+
+        <div>
+            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-3 flex items-center gap-2 border-t dark:border-gray-700 pt-4" data-i18n="interests.humanities">
+                🏛️ Ciências Humanas
+            </h4>
+            <div class="grid grid-cols-2 gap-3">
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="history" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.history">História</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="geography" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.geography">Geografia</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="philosophy" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.philosophy">Filosofia</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="sociology" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.sociology">Sociologia</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="psychology" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.psychology">Psicologia</span>
+                </label>
+            </div>
+        </div>
+
+        <div>
+            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-3 flex items-center gap-2 border-t dark:border-gray-700 pt-4" data-i18n="interests.languagesAndArts">
+                📚 Linguagens e Artes
+            </h4>
+            <div class="grid grid-cols-2 gap-3">
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="literature" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.literature">Literatura</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="languages" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.languages">Idiomas</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="writing" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.writing">Redação</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="arts" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.arts">Artes</span>
+                </label>
+            </div>
+        </div>
+
+        <div>
+            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-3 flex items-center gap-2 border-t dark:border-gray-700 pt-4" data-i18n="interests.appliedAndProfessional">
+                💼 Ciências Aplicadas
+            </h4>
+            <div class="grid grid-cols-2 gap-3">
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="law" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.law">Direito</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="economics" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.economics">Economia</span>
+                </label>
+            </div>
+        </div>
+
+        <div>
+            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-3 flex items-center gap-2 border-t dark:border-gray-700 pt-4" data-i18n="interests.academicAndProductivity">
+                🎓 Acadêmico e Produtividade
+            </h4>
+            <div class="grid grid-cols-2 gap-3 pb-2">
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="research" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.researchMethodology">Pesquisa</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer group">
+                    <input type="checkbox" value="studyskills" class="setting-interest rounded text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm dark:text-gray-300 group-hover:text-blue-500 transition-colors" data-i18n="interests.studySkills">Técnicas de Estudo</span>
+                </label>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+                <div class="pt-6 mt-6 border-t border-red-200 dark:border-red-900/30">
+                <h3 class="text-lg font-medium text-red-600 mb-2" data-i18n="settings.dangerZone">Zona de Perigo</h3>
+                <button type="button" id="delete-account-btn" data-i18n="settings.deleteAccountPermanent" class="w-full px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-md hover:bg-red-100 hover:border-red-300 transition-colors text-sm font-medium">Excluir minha conta permanentemente</button>
+                </div>
+                    </form>
+                </div>
+                <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shrink-0">
+                    <div class="flex gap-3">
+                        <button id="cancel-settings" data-i18n="settings.cancel" class="flex-1 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium">Cancelar</button>
+                        <button type="submit" form="settings-form" data-i18n="settings.save" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium shadow-sm">Salvar Alterações</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Toast Container para múltiplas notificações -->
+    <div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-3 pointer-events-none max-w-sm"></div>
+
+    <!-- Toast legado (mantido para compatibilidade) -->
+    <div id="toast" class="fixed top-4 right-4 z-[9999] hidden bg-white dark:bg-gray-800 shadow-xl rounded-lg p-4 border-l-4 border-blue-500 max-w-sm w-full animate-bounce-in">
+        <div class="flex gap-3">
+        <div id="toast-icon" class="text-2xl">ℹ️</div>
+        <div>
+            <p id="toast-title" class="font-bold text-gray-900 dark:text-white" data-i18n="toasts.defaultTitle">Aviso</p>
+            <p id="toast-message" class="text-sm text-gray-600 dark:text-gray-300" data-i18n="toasts.defaultMessage">Mensagem aqui</p>
+        </div>
+        </div>
+    </div>
+
+<div id="rename-modal-overlay" class="settings-modal-overlay z-[70]"></div>
+<div id="rename-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-2xl z-[80] w-full max-w-sm hidden">
+    <h3 class="text-lg font-bold mb-4 dark:text-white">Renomear Conversa</h3>
+    <input type="text" id="rename-input" class="w-full p-2 border rounded mb-4 dark:bg-gray-700 dark:text-white dark:border-gray-600" autofocus>
+    <div class="flex justify-end gap-2">
+        <button id="rename-cancel" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded dark:text-gray-300 dark:hover:bg-gray-700">Cancelar</button>
+        <button id="rename-save" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Salvar</button>
+    </div>
+</div>
+
+<div id="confirm-modal-overlay" class="settings-modal-overlay z-[70]"></div>
+<div id="confirm-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-2xl z-[80] w-full max-w-sm hidden text-center">
+    <div class="text-red-500 mb-2 text-4xl">⚠️</div>
+    <h3 class="text-lg font-bold mb-2 dark:text-white">Confirmar Exclusão</h3>
+    <p class="text-gray-600 dark:text-gray-300 mb-6">Tem certeza que deseja excluir esta conversa? Esta ação não pode ser desfeita.</p>
+    <div class="flex gap-3">
+        <button id="confirm-cancel" class="flex-1 px-4 py-2 bg-gray-200 rounded text-gray-800 hover:bg-gray-300 font-medium transition-colors">Cancelar</button>
+        <button id="confirm-ok" class="flex-1 px-4 py-2 bg-red-600 rounded text-white hover:bg-red-700 font-medium transition-colors">Excluir</button>
+    </div>
+</div>
+
+<!-- Add Classroom Modal -->
+<div id="classroom-modal-overlay" class="settings-modal-overlay z-[70]"></div>
+<div id="classroom-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-2xl z-[80] w-full max-w-sm hidden">
+    <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+        </div>
+        <div>
+            <h3 class="text-lg font-bold dark:text-white" data-i18n="classroom.joinTitle">Entrar em uma Sala</h3>
+            <p class="text-xs text-gray-500" data-i18n="classroom.joinSubtitle">Digite o código da turma</p>
+        </div>
+    </div>
+    <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" data-i18n="classroom.codeLabel">Código da Turma</label>
+        <input type="text" id="classroom-code-input" class="w-full p-3 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 uppercase tracking-wider text-center font-mono text-lg" placeholder="ABC123" maxlength="10" autocomplete="off">
+        <p class="text-xs text-gray-400 mt-2" data-i18n="classroom.codeHint">O código foi fornecido pelo seu professor</p>
+    </div>
+    <div id="classroom-error" class="hidden mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400"></div>
+    <div class="flex gap-3">
+        <button id="classroom-cancel" class="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 font-medium transition-colors" data-i18n="settings.cancel">Cancelar</button>
+        <button id="classroom-join" class="flex-1 px-4 py-2.5 bg-blue-600 rounded-lg text-white hover:bg-blue-700 font-medium transition-colors flex items-center justify-center gap-2" data-i18n="classroom.joinButton">
+            <span>Entrar</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+        </button>
+    </div>
+</div>
+
+<script>
+// Classroom Modal Logic
+(function() {
+    const addBtn = document.getElementById('add-classroom-btn');
+    const modal = document.getElementById('classroom-modal');
+    const overlay = document.getElementById('classroom-modal-overlay');
+    const codeInput = document.getElementById('classroom-code-input');
+    const cancelBtn = document.getElementById('classroom-cancel');
+    const joinBtn = document.getElementById('classroom-join');
+    const errorDiv = document.getElementById('classroom-error');
+    const classroomSearchInput = document.getElementById('classroom-search');
+    let cachedClassrooms = [];
+
+    function openModal() {
+        modal.classList.remove('hidden');
+        overlay.classList.add('active');
+        codeInput.value = '';
+        errorDiv.classList.add('hidden');
+        setTimeout(() => codeInput.focus(), 100);
+    }
+
+    function closeModal() {
+        modal.classList.add('hidden');
+        overlay.classList.remove('active');
+    }
+
+    function showError(msg) {
+        errorDiv.textContent = msg;
+        errorDiv.classList.remove('hidden');
+    }
+
+    function filterClassroomsByTerm(list, term) {
+        if (!term) return list;
+        const normalized = term.toLowerCase();
+        return list.filter(c => {
+            const name = (c.name || '').toLowerCase();
+            const teacher = (c.teacher_name || '').toLowerCase();
+            return name.includes(normalized) || teacher.includes(normalized);
+        });
+    }
+
+    // ==========================================
+    // 🔔 TOAST GLOBAL - Define antes de tudo
+    // ==========================================
+    window.showToast = function(messageOrObj, type = 'info') {
+        // Suporta ambos: showToast('msg', 'type') ou showToast({title, message, type})
+        let message = messageOrObj;
+        if (typeof messageOrObj === 'object') {
+            message = messageOrObj.message || messageOrObj.title || '';
+            type = messageOrObj.type || 'info';
+        }
+        
+        const container = document.getElementById('toast-container');
+        if (!container) {
+            console.warn('Toast container not found');
+            return;
+        }
+        
+        const toast = document.createElement('div');
+        toast.className = `bg-white dark:bg-gray-800 shadow-xl rounded-lg p-4 border-l-4 pointer-events-auto animate-bounce-in`;
+        
+        // Cores baseadas no tipo
+        const colors = {
+            success: 'border-l-green-500 text-green-600 dark:text-green-400',
+            error: 'border-l-red-500 text-red-600 dark:text-red-400',
+            warning: 'border-l-yellow-500 text-yellow-600 dark:text-yellow-400',
+            info: 'border-l-blue-500 text-blue-600 dark:text-blue-400'
+        };
+        
+        // Ícone baseado no tipo
+        const icons = {
+            success: '✅',
+            error: '❌',
+            warning: '⚠️',
+            info: 'ℹ️'
+        };
+        
+        toast.classList.add(colors[type] || colors.info);
+        toast.innerHTML = `
+            <div class="flex items-start gap-3">
+                <span class="text-xl flex-shrink-0">${icons[type] || icons.info}</span>
+                <span class="flex-1">${message}</span>
+                <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0" onclick="this.parentElement.parentElement.remove()">
+                    ✕
+                </button>
+            </div>
+        `;
+        
+        container.appendChild(toast);
+        
+        // Auto-remove após 3 segundos
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.style.animation = 'fadeOut 0.3s ease forwards';
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, 3000);
+    };
+
+    async function joinClassroom() {
+        const code = codeInput.value.trim().toUpperCase();
+        if (!code) {
+            showError('Digite o código da turma');
+            return;
+        }
+
+        joinBtn.disabled = true;
+        joinBtn.innerHTML = '<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>';
+
+        try {
+            const token = localStorage.getItem('access_token');
+            const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+            const API_URL = isLocal ? 'http://127.0.0.1:8000' : 'https://atenaai-api.onrender.com';
+            
+            const response = await fetch(`${API_URL}/api/v1/classrooms/join`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ code: code })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.detail || 'Código inválido ou turma não encontrada');
+            }
+
+            closeModal();
+            // Mostrar toast de sucesso
+            showToast({ title: 'Solicitação enviada', message: 'Aguarde a aprovação do professor', type: 'success' });
+            
+            // Recarregar lista de turmas e verificar atualizações imediatamente
+            await loadClassrooms();
+            
+            // Verificar imediatamente se foi aprovado (para salas com aprovação automática)
+            setTimeout(() => checkClassroomUpdates(), 1000);
+        } catch (err) {
+            showError(err.message);
+        } finally {
+            joinBtn.disabled = false;
+            joinBtn.innerHTML = '<span>Entrar</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>';
+        }
+    }
+
+    // Load user's classrooms
+    async function loadClassrooms() {
+        try {
+            const token = localStorage.getItem('access_token');
+            const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+            const API_URL = isLocal ? 'http://127.0.0.1:8000' : 'https://atenaai-api.onrender.com';
+            
+            console.log('Loading classrooms from:', `${API_URL}/api/v1/classrooms/my`);
+            console.log('Token:', token ? 'Present' : 'Missing');
+            
+            const response = await fetch(`${API_URL}/api/v1/classrooms/my`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            console.log('Response status:', response.status);
+            const classrooms = await response.json();
+            console.log('Classrooms data:', classrooms);
+
+            if (response.ok && Array.isArray(classrooms)) {
+                cachedClassrooms = classrooms;
+                renderClassroomList();
+            }
+        } catch (err) {
+            console.error('Error loading classrooms:', err);
+        }
+    }
+
+    function renderClassroomList() {
+        const list = document.getElementById('classroom-list');
+        if (!list) return;
+
+        const searchTerm = (classroomSearchInput?.value || '').trim().toLowerCase();
+        const filteredClassrooms = filterClassroomsByTerm(cachedClassrooms, searchTerm);
+
+        list.innerHTML = '';
+
+        const approved = filteredClassrooms.filter(c => c.status === 'approved' || !c.status);
+        const pending = filteredClassrooms.filter(c => c.status === 'pending');
+
+        approved.forEach(c => {
+            const li = document.createElement('li');
+            li.className = 'classroom-item';
+            li.innerHTML = `
+                <div class="classroom-header flex items-center gap-2 px-2 py-2 rounded-lg group/header">
+                    <button class="classroom-toggle-btn p-0.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded" data-classroom-id="${c.id}">
+                        <svg class="classroom-toggle w-3 h-3 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+                    <a href="../sala/?id=${c.id}" class="flex items-center gap-2 flex-1 min-w-0">
+                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                            ${c.name.substring(0, 2).toUpperCase()}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">${c.name}</p>
+                            <p class="text-xs text-gray-400 truncate">Prof: ${c.teacher_name || 'Professor'}</p>
+                        </div>
+                    </a>
+                    <button onclick="event.preventDefault(); event.stopPropagation(); leaveClassroom(${c.id}, '${c.name.replace(/'/g, "\\'")}')" class="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500 opacity-0 group-hover/header:opacity-100 transition-all shrink-0" title="Sair da turma">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="classroom-menu pl-9 pr-2 pb-1">
+                    <a href="../sala/?id=${c.id}" class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 text-sm transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                        </svg>
+                        <span>Chat</span>
+                    </a>
+                    <a href="../sala/?id=${c.id}&tab=activities" class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 text-sm transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                        </svg>
+                        <span>Atividades</span>
+                    </a>
+                    <a href="../sala/?id=${c.id}&tab=files" class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 text-sm transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                        </svg>
+                        <span>Arquivos</span>
+                    </a>
+                    <a href="../sala/?id=${c.id}&tab=members" class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 text-sm transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                        <span>Membros</span>
+                    </a>
+                </div>
+            `;
+            list.appendChild(li);
+        });
+
+        pending.forEach(c => {
+            const li = document.createElement('li');
+            li.className = 'relative group/item px-2 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700';
+            li.setAttribute('data-classroom-id', c.id);
+            li.setAttribute('data-status', 'pending');
+            li.innerHTML = `
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Aguardando aprovação
+                        </p>
+                        <p class="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">${c.name}</p>
+                        <p class="text-xs text-gray-400 truncate">Prof: ${c.teacher_name || 'Professor'}</p>
+                    </div>
+                    <button onclick="event.preventDefault(); cancelJoinRequest(${c.id}, '${c.name.replace(/'/g, "\\'")}')" class="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 dark:text-red-400 flex-shrink-0 text-gray-600 hover:text-red-600 dark:hover:text-red-400 transition-colors" title="Cancelar solicitação">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            `;
+            list.appendChild(li);
+        });
+
+        if (filteredClassrooms.length === 0) {
+            list.innerHTML = '<li class="px-2 py-2 text-xs text-gray-500 text-center">Nenhuma sala</li>';
+        }
+
+        document.querySelectorAll('.classroom-toggle-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const header = this.closest('.classroom-header');
+                const menu = header.nextElementSibling;
+                const toggle = this.querySelector('.classroom-toggle');
+                const classroomId = this.dataset.classroomId;
+                
+                menu.classList.toggle('expanded');
+                toggle.classList.toggle('expanded');
+                
+                const isExpanded = menu.classList.contains('expanded');
+                const expandedClassrooms = JSON.parse(localStorage.getItem('expandedClassrooms') || '{}');
+                expandedClassrooms[classroomId] = isExpanded;
+                localStorage.setItem('expandedClassrooms', JSON.stringify(expandedClassrooms));
+            });
+        });
+        
+        const expandedClassrooms = JSON.parse(localStorage.getItem('expandedClassrooms') || '{}');
+        Object.keys(expandedClassrooms).forEach(classroomId => {
+            if (expandedClassrooms[classroomId]) {
+                const btn = document.querySelector(`[data-classroom-id="${classroomId}"]`);
+                if (btn) {
+                    const header = btn.closest('.classroom-header');
+                    const menu = header.nextElementSibling;
+                    const toggle = btn.querySelector('.classroom-toggle');
+                    
+                    if (menu && toggle) {
+                        menu.classList.add('expanded');
+                        toggle.classList.add('expanded');
+                    }
+                }
+            }
+        });
+    }
+
+    addBtn?.addEventListener('click', openModal);
+    overlay?.addEventListener('click', closeModal);
+    cancelBtn?.addEventListener('click', closeModal);
+    joinBtn?.addEventListener('click', joinClassroom);
+    codeInput?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') joinClassroom();
+    });
+    codeInput?.addEventListener('input', (e) => {
+        e.target.value = e.target.value.toUpperCase();
+    });
+    classroomSearchInput?.addEventListener('input', renderClassroomList);
+
+    // Load classrooms on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        loadClassrooms();
+        startClassroomRefresh(); // Polling contínuo para detectar mudanças
+    });
+
+    // Refresh immediately when tab gains focus
+    window.addEventListener('focus', () => {
+        console.log('[Classroom] Tab focused - refreshing classrooms');
+        loadClassrooms();
+    });
+
+    // Auto-refresh classrooms every 3 seconds to detect changes (approvals, rejections, removals)
+    let classroomRefreshInterval = null;
+    let lastClassroomsState = null;
+    
+    async function checkClassroomUpdates() {
+        try {
+            const token = localStorage.getItem('access_token');
+            const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+            const API_URL = isLocal ? 'http://127.0.0.1:8000' : 'https://atenaai-api.onrender.com';
+            
+            const response = await fetch(`${API_URL}/api/v1/classrooms/my`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (response.ok) {
+                const classrooms = await response.json();
+                
+                if (lastClassroomsState) {
+                    // IDs antigos e novos
+                    const oldApproved = lastClassroomsState.filter(c => c.status === 'approved').map(c => c.id);
+                    const oldPending = lastClassroomsState.filter(c => c.status === 'pending').map(c => c.id);
+                    
+                    const newApproved = classrooms.filter(c => c.status === 'approved').map(c => c.id);
+                    const newPending = classrooms.filter(c => c.status === 'pending').map(c => c.id);
+                    
+                    // Detectar salas que foram removidas completamente (professor removeu do course)
+                    const removedFromApproved = oldApproved.filter(id => !newApproved.includes(id) && !newPending.includes(id));
+                    
+                    // Detectar mudanças de pending para approved (aprovações)
+                    const approvedIds = oldPending.filter(id => newApproved.includes(id));
+                    
+                    // Detectar mudanças de pending para nada (rejeições)
+                    const rejectedIds = oldPending.filter(id => !newApproved.includes(id) && !newPending.includes(id));
+                    
+                    // Notificações de remoção de sala (professor removeu o aluno) - IMEDIATAS
+                    removedFromApproved.forEach(id => {
+                        const oldClassroom = lastClassroomsState.find(c => c.id === id);
+                        if (oldClassroom) {
+                            showToast({ title: 'Removido da turma', message: `Você foi removido de "${oldClassroom.name}"`, type: 'warning' });
+                        }
+                    });
+                    
+                    // Notificações de aprovação - IMEDIATAS
+                    approvedIds.forEach(id => {
+                        const classroom = classrooms.find(c => c.id === id);
+                        if (classroom) {
+                            showToast({ title: 'Aprovado!', message: `Você agora faz parte de "${classroom.name}"`, type: 'success', duration: 5000 });
+                        }
+                    });
+                    
+                    // Notificações de rejeição removidas - usuário cancela manualmente
+                }
+                
+                // Atualizar estado
+                lastClassroomsState = JSON.parse(JSON.stringify(classrooms));
+                loadClassrooms();
+            }
+        } catch (err) {
+            console.error('Error in classroom refresh:', err);
+        }
+    }
+    
+    async function startClassroomRefresh() {
+        if (classroomRefreshInterval) clearInterval(classroomRefreshInterval);
+        
+        // Polling a cada 3 segundos para detecção rápida
+        classroomRefreshInterval = setInterval(checkClassroomUpdates, 3000);
+    }
+
+    // Helper function to show styled confirmation dialog
+    function showConfirmDialog(title, message, confirmText, cancelText, onConfirm, icon = '⚠️', isRed = false) {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 z-[100] flex items-center justify-center';
+        modal.innerHTML = `
+            <div class="fixed inset-0 bg-black/50"></div>
+            <div class="relative bg-white dark:bg-gray-800 p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 text-center">
+                <div class="mb-4 text-4xl">${icon}</div>
+                <h3 class="text-lg font-bold mb-2 dark:text-white">${title}</h3>
+                <p class="text-gray-600 dark:text-gray-300 mb-6">${message}</p>
+                <div class="flex gap-3">
+                    <button id="confirm-cancel-btn" class="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 font-medium transition-colors">
+                        ${cancelText}
+                    </button>
+                    <button id="confirm-ok-btn" class="flex-1 px-4 py-2 ${isRed ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'} rounded-lg text-white font-medium transition-colors">
+                        ${confirmText}
+                    </button>
+                </div>
+            </div>
+        `;
+        modal.setAttribute('data-modal', 'true');
+        document.body.appendChild(modal);
+        
+        // Get buttons after insertion
+        const cancelBtn = modal.querySelector('#confirm-cancel-btn');
+        const okBtn = modal.querySelector('#confirm-ok-btn');
+        
+        function closeModal() {
+            modal.remove();
+        }
+        
+        cancelBtn?.addEventListener('click', closeModal);
+        okBtn?.addEventListener('click', () => {
+            closeModal();
+            onConfirm();
+        });
+        
+        // Close on overlay click
+        modal.firstChild?.addEventListener('click', closeModal);
+    }
+
+    // Cancel classroom join request (global for onclick)
+    window.cancelJoinRequest = async function(classroomId, classroomName) {
+        try {
+            const token = localStorage.getItem('access_token');
+            const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+            const API_URL = isLocal ? 'http://127.0.0.1:8000' : 'https://atenaai-api.onrender.com';
+            
+            const response = await fetch(`${API_URL}/api/v1/classrooms/${classroomId}/cancel-request`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                showToast({ title: 'Sucesso', message: 'Solicitação removida com sucesso', type: 'success' });
+                setTimeout(() => loadClassrooms(), 500);
+            } else {
+                const data = await response.json();
+                showToast({ title: 'Erro', message: data.detail || 'Não foi possível cancelar a solicitação', type: 'error' });
+            }
+        } catch (err) {
+            console.error('Error canceling join request:', err);
+            showToast({ title: 'Erro', message: 'Erro ao processar cancelamento', type: 'error' });
+        }
+    };
+
+    // Leave classroom function (global for onclick)
+    window.leaveClassroom = async function(classroomId, classroomName) {
+        showConfirmDialog(
+            'Sair da Turma',
+            `Deseja realmente sair da turma "${classroomName}"? Esta ação não pode ser desfeita.`,
+            'Sair',
+            'Cancelar',
+            async function() {
+                try {
+                    const token = localStorage.getItem('access_token');
+                    const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+                    const API_URL = isLocal ? 'http://127.0.0.1:8000' : 'https://atenaai-api.onrender.com';
+                    
+                    const response = await fetch(`${API_URL}/api/v1/classrooms/${classroomId}/leave`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (response.ok) {
+                        showToast({ title: 'Saída confirmada', message: `Você não faz mais parte de "${classroomName}"`, type: 'success' });
+                        setTimeout(() => loadClassrooms(), 500);
+                    } else {
+                        const data = await response.json();
+                        showToast({ title: 'Erro', message: data.detail || 'Não foi possível sair da turma', type: 'error' });
+                    }
+                } catch (err) {
+                    console.error('Error leaving classroom:', err);
+                    showToast('Erro ao processar saída', 'error');
+                }
+            },
+            '👋',
+            true
+        );
+    };
+
+    // Emoji button handler
+    const emojiBtn = document.getElementById('btn-emoji');
+    if (emojiBtn) {
+        emojiBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            // Lista de emojis comuns para estudos
+            const emojis = ['😊', '👍', '❤️', '😂', '🎉', '🤔', '📚', '✨', '💡', '🔥', '👏', '🙌', '💪', '🎯', '✅', '❌', '⭐', '📝', '🤓', '🧠'];
+            const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+            const textarea = document.getElementById('user-input');
+            if (textarea) {
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const text = textarea.value;
+                textarea.value = text.substring(0, start) + emoji + text.substring(end);
+                textarea.focus();
+                textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
+            }
+        });
+    }
+
+    // Attach file button handler
+    const attachBtn = document.getElementById('btn-attach');
+    if (attachBtn) {
+        attachBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            showToast({ 
+                title: 'Em breve', 
+                message: 'A função de anexar arquivos estará disponível em breve!', 
+                type: 'info' 
+            });
+        });
+    }
+})();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="../js/utils/i18n.js"></script>
+<script type="module" src="../js/core/auth.js"></script>
+<script type="module" src="../js/ui/ui.js"></script>
+<script type="module" src="../js/pages/chat-page.js"></script>
+<script type="module" src="../js/features/settings.js"></script>
+<script type="module">
+    // Inicializar serviço de notificações
+    import { initNotifications } from '../js/services/notifications.js';
+    initNotifications();
+</script>
+
+</body>
+</html>

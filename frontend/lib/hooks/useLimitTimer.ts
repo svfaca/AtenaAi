@@ -1,6 +1,6 @@
 ﻿import { useEffect, useState } from 'react';
 
-export function useLimitTimer(initialSeconds: number): number {
+export function useLimitTimer(initialSeconds = 0): number {
   const [seconds, setSeconds] = useState(Math.max(0, initialSeconds));
 
   useEffect(() => {

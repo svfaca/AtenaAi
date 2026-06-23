@@ -9,7 +9,7 @@ export interface SidebarProps {
   userInitial: string
   userAvatar?: string | null
   userRole?: string
-  footer: ReactNode
+  footer: ReactNode | ((args: { isCollapsed: boolean }) => ReactNode)
 }
 
 /**

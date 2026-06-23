@@ -1,17 +1,28 @@
 from sqlalchemy.orm import Session
-from app.models import Conversation, Message, User
+from typing import Any
+from app.models import Conversation, Message
 
 
-def get_or_create_conversation(db: Session, user: User):
-    conversation = (
-        db.query(Conversation)
-        .filter(Conversation.user_id == user.id)
-        .order_by(Conversation.created_at.desc())
-        .first()
-    )
+def get_or_create_conversation(
+    db: Session,
+    user_id: Any,
+    conversation_id: int | None = None,
+    title: str | None = None,
+):
+    conversation = None
+
+    if conversation_id:
+        conversation = (
+            db.query(Conversation)
+            .filter(
+                Conversation.id == conversation_id,
+                Conversation.user_id == user_id,
+            )
+            .first()
+        )
 
     if not conversation:
-        conversation = Conversation(user_id=user.id)
+        conversation = Conversation(user_id=user_id, title=title)
         db.add(conversation)
         db.commit()
         db.refresh(conversation)

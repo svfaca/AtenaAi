@@ -1,6 +1,11 @@
 'use client';
 
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+
+// Runs synchronously before the browser paints on the client.
+// Falls back to useEffect to avoid SSR warnings during server render.
+const useIsomorphicLayoutEffect =
+  typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 type SidebarRenderProp = (args: { isCollapsed: boolean }) => ReactNode;
 
@@ -38,14 +43,15 @@ export default function AppSidebar({
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [isDesktop, setIsDesktop] = useState(false);
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const mediaQuery = window.matchMedia('(min-width: 1024px)');
+    // Set correct value immediately — before first paint on the client
+    setIsDesktop(mediaQuery.matches);
 
     const handleChange = (event: MediaQueryListEvent) => {
       setIsDesktop(event.matches);
     };
 
-    setIsDesktop(mediaQuery.matches);
     mediaQuery.addEventListener('change', handleChange);
 
     return () => {

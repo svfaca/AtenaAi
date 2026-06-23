@@ -11,6 +11,7 @@ type SidebarRoomsProps = {
   isCollapsed: boolean;
   onJoinRoom: () => void;
   onLeaveRoom: (roomId: string) => void;
+  onOpenRoom: (roomId: string) => void;
 };
 
 export default function SidebarRooms({
@@ -20,6 +21,7 @@ export default function SidebarRooms({
   isCollapsed,
   onJoinRoom,
   onLeaveRoom,
+  onOpenRoom,
 }: SidebarRoomsProps) {
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
@@ -107,7 +109,10 @@ export default function SidebarRooms({
           ) : (
             rooms.map((room) => (
               <div key={room.id} className="group relative">
-                <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700">
+                <div
+                  onClick={() => onOpenRoom(room.id)}
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700"
+                >
                   <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       d="M3 21h18M5 21V7a2 2 0 012-2h10a2 2 0 012 2v14M9 10h1m4 0h1m-6 4h1m4 0h1"
@@ -117,6 +122,11 @@ export default function SidebarRooms({
                     />
                   </svg>
                   <span className="flex-1 truncate">{room.name}</span>
+                  {room.status === 'pending' && (
+                    <span className="rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                      Aguardando
+                    </span>
+                  )}
                   <button
                     onClick={(e) => toggleMenu(room.id, e)}
                     className="rounded p-1 opacity-0 transition-opacity hover:bg-gray-300 group-hover:opacity-100 dark:hover:bg-gray-600"
@@ -142,7 +152,9 @@ export default function SidebarRooms({
                       onClick={() => handleLeaveRoom(room.id)}
                       className="w-full px-4 py-2 text-left text-sm text-red-400 transition-colors hover:bg-gray-700"
                     >
-                      Sair da sala
+                      {room.status === 'pending'
+                        ? 'Cancelar solicitacao de entrada'
+                        : 'Sair da sala'}
                     </button>
                   </div>
                 )}

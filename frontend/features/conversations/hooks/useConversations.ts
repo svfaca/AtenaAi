@@ -20,7 +20,7 @@ function normalizeConversation(raw: unknown): Conversation | null {
   if (!Number.isFinite(numericId)) return null
 
   return {
-    ...(raw as Conversation),
+    ...(raw as unknown as Conversation),
     ...(nested as Partial<Conversation>),
     id: numericId,
   } as Conversation

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.database.database import SessionLocal
+from app.database.query_helpers import active_users_query
 from app.models.user import User
 from app.core.security import SECRET_KEY, ALGORITHM
 
@@ -55,7 +56,7 @@ def get_current_user(
     except JWTError:
         raise credentials_exception
 
-    user = db.query(User).filter(User.id == int(user_id)).first()
+    user = active_users_query(db).filter(User.id == int(user_id)).first()
 
     if not user:
         raise credentials_exception
@@ -86,8 +87,7 @@ def get_current_user_optional(
         if not user_id:
             return None
             
-        user = db.query(User).filter(User.id == int(user_id)).first()
-        return user
+        return active_users_query(db).filter(User.id == int(user_id)).first()
         
     except JWTError:
         return None

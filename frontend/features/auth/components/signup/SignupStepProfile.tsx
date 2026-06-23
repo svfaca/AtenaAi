@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { SignupFormData } from "../../types/auth.types"
+import { useNotification } from "@/lib/hooks/useNotification"
 
 type Props = {
   form: SignupFormData
@@ -13,6 +14,7 @@ type Props = {
 export function SignupStepProfile({ form, setForm, next, back }: Props) {
   const [error, setError] = useState("")
   const [previewUrl, setPreviewUrl] = useState<string>("")
+  const { error: errorToast } = useNotification()
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -30,22 +32,30 @@ export function SignupStepProfile({ form, setForm, next, back }: Props) {
     setError("")
 
     if (!form.name.trim()) {
-      setError("O nome completo é obrigatório")
+      const msg = "O nome completo é obrigatório"
+      setError(msg)
+      errorToast(msg)
       return
     }
 
     if (!form.birthdate) {
-      setError("A data de nascimento é obrigatória")
+      const msg = "A data de nascimento é obrigatória"
+      setError(msg)
+      errorToast(msg)
       return
     }
 
     if (!form.gender) {
-      setError("Selecione sua identidade de gênero")
+      const msg = "Selecione sua identidade de gênero"
+      setError(msg)
+      errorToast(msg)
       return
     }
 
     if (form.gender === "other" && !form.genderCustom?.trim()) {
-      setError("Por favor, descreva sua identidade de gênero")
+      const msg = "Por favor, descreva sua identidade de gênero"
+      setError(msg)
+      errorToast(msg)
       return
     }
 

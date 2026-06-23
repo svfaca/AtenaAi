@@ -9,6 +9,7 @@ type AppHeaderProps = {
   userBadge?: ReactNode;
   actions?: ReactNode;
   mobileMenuButton?: ReactNode;
+  onLogoClick?: () => void;
 };
 
 /**
@@ -25,6 +26,7 @@ export default function AppHeader({
   userBadge,
   actions,
   mobileMenuButton,
+  onLogoClick,
 }: AppHeaderProps) {
   return (
     <header className="z-10 flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 dark:border-gray-700 dark:bg-gray-900">
@@ -33,14 +35,14 @@ export default function AppHeader({
         {mobileMenuButton}
 
         {/* Logo */}
-        <Link href="/" className="flex items-center text-xl font-bold text-gray-900 dark:text-gray-100">
+        <Link href="/" onClick={onLogoClick} className="flex items-center text-xl font-bold text-gray-900 dark:text-gray-100">
           <Image
             src={logo}
             alt="AtenaAI"
             width={32}
             height={32}
             className="mr-2"
-            style={{ height: 'auto' }}
+            style={{ width: 'auto', height: 'auto' }}
           />
           AtenaAI
         </Link>

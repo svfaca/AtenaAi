@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { LoginModal, SignupModal } from "@/features/auth"
+import { useAboutModal } from "@/features/about"
 
 /**
  * Exemplo de uso dos modais de autenticação
@@ -14,6 +15,7 @@ import { LoginModal, SignupModal } from "@/features/auth"
 export function PublicHeader() {
   const [loginOpen, setLoginOpen] = useState(false)
   const [signupOpen, setSignupOpen] = useState(false)
+  const { openAbout } = useAboutModal()
 
   // Função para trocar de login para signup
   const switchToSignup = () => {
@@ -47,12 +49,12 @@ export function PublicHeader() {
 
         {/* Botões de ação */}
         <div className="flex items-center gap-2">
-          <a 
-            href="/quem-somos" 
+          <button 
+            onClick={openAbout}
             className="text-sm font-medium hover:underline px-2"
           >
-            Quem somos
-          </a>
+            Sobre
+          </button>
 
           <button
             onClick={() => setLoginOpen(true)}

@@ -5,14 +5,15 @@ import TextMessage from './TextMessage';
 import AtenaLimitMessage from './AtenaLimitMessage';
 
 interface Message {
-  id: string;
+  id: string | number;
   content: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   timestamp?: Date;
 }
 
 type MessageListProps = {
   messages: Message[];
+  isLoading?: boolean;
   rateLimit?: number | null;
   onLogin?: () => void;
   onRegister?: () => void;
@@ -23,6 +24,7 @@ const BOTTOM_THRESHOLD_PX = 120;
 
 export default function MessageList({
   messages,
+  isLoading = false,
   rateLimit,
   onLogin,
   onRegister,
@@ -83,7 +85,10 @@ export default function MessageList({
                   onExpire={onRateLimitExpire}
                 />
               ) : (
-                <TextMessage content={message.content} role={message.role} />
+                <TextMessage
+                  content={message.content}
+                  role={message.role === 'user' ? 'user' : 'assistant'}
+                />
               )}
             </div>
           ))}

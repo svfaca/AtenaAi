@@ -23,6 +23,7 @@ export interface Classroom {
   code: string;
   createdAt: string;
   studentCount: number;
+  status?: 'approved' | 'pending';
 }
 
 export interface StudentReport {

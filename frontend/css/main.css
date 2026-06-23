@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbars for chat area */
+.chat-container::-webkit-scrollbar {
+	width: 8px;
+}
+.chat-container::-webkit-scrollbar-track {
+	background: transparent;
+}
+.chat-container::-webkit-scrollbar-thumb {
+	background-color: #cbd5e1;
+	border-radius: 20px;
+}
+.dark .chat-container::-webkit-scrollbar-thumb {
+	background-color: #374151;
+}
+
+/* Transparent scrollbar inside the message input */
+#user-input::-webkit-scrollbar {
+	width: 8px;
+	background: transparent;
+}
+#user-input::-webkit-scrollbar-track {
+	background: transparent;
+}
+#user-input::-webkit-scrollbar-thumb {
+	background: transparent;
+}
+/* SIDEBAR STYLES */
+#sidebar {
+	transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	width: 16rem;
+	display: flex;
+	flex-direction: column;
+	background-color: #f9fafb;
+	border-right: 1px solid #e5e7eb;
+	z-index: 40;
+}
+
+.dark #sidebar {
+	background-color: #1f2937;
+	border-color: #374151;
+}
+
+#sidebar.sidebar-collapsed {
+	width: 4.5rem !important;
+}
+
+#sidebar.sidebar-collapsed .sidebar-expanded-content {
+	display: none !important;
+}
+
+#sidebar.sidebar-collapsed .sidebar-collapsed-content {
+	display: flex !important;
+	flex-direction: column;
+	align-items: center;
+	width: 100%;
+}
+
+#sidebar:not(.sidebar-collapsed) .sidebar-collapsed-content {
+	display: none !important;
+}
+
+/* SIDEBAR ON MOBILE */
+@media (max-width: 767px) {
+	#sidebar {
+		position: fixed;
+		left: 0;
+		top: 0;
+		height: 100%;
+		z-index: 50;
+		transform: translateX(-100%);
+		width: 16rem !important;
+		transition: transform 0.3s ease-in-out;
+	}
+
+	#sidebar.mobile-open {
+		transform: translateX(0);
+	}
+
+	#sidebar.sidebar-collapsed {
+		width: 16rem !important;
+	}
+
+	#sidebar.sidebar-collapsed .sidebar-expanded-content {
+		display: block !important;
+	}
+
+	#sidebar.sidebar-collapsed .sidebar-collapsed-content {
+		display: none !important;
+	}
+
+	#sidebar-overlay {
+		display: none;
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.5);
+		z-index: 45;
+	}
+
+	#sidebar-overlay.active {
+		display: block;
+	}
+
+	#sidebar-toggle {
+		display: none !important;
+	}
+}
+
+/* Icon button in collapsed sidebar */
+.icon-btn-collapsed {
+	padding: 0.5rem;
+	border-radius: 0.75rem;
+}
+
+.icon-btn-collapsed:hover {
+	background-color: #e5e7eb;
+}
+
+.dark .icon-btn-collapsed:hover {
+	background-color: #374151;
+}

@@ -88,9 +88,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearSessionHintCookie()
     setUser(null)
     useChatStore.getState().resetChat()
-    
-    // 🔥 Clear all SWR caches after logout
-    await mutate(() => true)
   }
 
   async function refreshUser() {

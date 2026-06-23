@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useThemeMode } from '@/lib/hooks/useThemeMode';
+import { useAboutModal } from '@/features/about';
 import { useAuth, LoginModal, SignupModal } from '@/features/auth';
 
 export default function PublicHeader() {
@@ -12,19 +13,28 @@ export default function PublicHeader() {
   const [signupOpen, setSignupOpen] = useState(false);
   const { theme, toggleTheme } = useThemeMode();
   const { user, logout } = useAuth();
+  const { isOpen: isAboutOpen, openAbout, closeAbout } = useAboutModal();
   const isDark = theme === 'dark';
+  const userDisplayName = user?.name || user?.full_name || user?.nickname || user?.email?.split('@')[0] || 'Usuario';
+  const userInitial = userDisplayName.charAt(0).toUpperCase();
+
+  const handleBrandClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (isAboutOpen) {
+      event.preventDefault();
+      closeAbout();
+    }
+  };
 
   return (
-    <header className="h-16 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 shrink-0 bg-white dark:bg-gray-900 z-10">
+    <header className="relative z-30 h-16 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 shrink-0 bg-white dark:bg-gray-900">
       <div className="flex items-center gap-3">
-        <Link href="/" className="flex items-center text-xl font-bold">
+        <Link href="/" onClick={handleBrandClick} className="flex items-center text-xl font-bold">
           <Image
             src={isDark ? '/logo/logo-icon-dark.png' : '/logo/logo-icon-ligth.png'}
             alt="AtenaAI"
             width={32}
             height={32}
-            className="mr-2"
-            style={{ height: 'auto' }}
+            className="mr-2 h-8 w-8 object-contain"
           />
           <span className="text-gray-900 dark:text-gray-100">AtenaAI</span>
         </Link>
@@ -52,9 +62,13 @@ export default function PublicHeader() {
         </button>
 
         <div className="hidden md:flex items-center gap-2">
-          <Link href="/quem-somos" className="text-sm font-medium hover:underline px-2">
-            Quem somos
-          </Link>
+          <button
+            onClick={isAboutOpen ? closeAbout : openAbout}
+            type="button"
+            className="text-sm font-medium hover:underline px-2"
+          >
+            {isAboutOpen ? 'Fechar' : 'Sobre'}
+          </button>
           
           {user ? (
             // Authenticated: Show Dashboard + Logout
@@ -74,14 +88,14 @@ export default function PublicHeader() {
                           ? user.profile_image 
                           : `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}${user.profile_image}`
                         } 
-                        alt={user.name}
+                        alt={userDisplayName}
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      user.name.charAt(0).toUpperCase()
+                      userInitial
                     )}
                   </div>
-                  <span className="text-sm font-medium">{user.name}</span>
+                  <span className="text-sm font-medium">{userDisplayName}</span>
                 </div>
                 <button
                   onClick={() => logout()}
@@ -130,12 +144,20 @@ export default function PublicHeader() {
       {isMobileMenuOpen && (
         <div className="absolute top-16 left-0 w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 z-50 p-4 shadow-lg md:hidden">
           <div className="flex flex-col gap-3">
-            <Link
-              href="/quem-somos"
-              className="text-sm font-medium py-2 border-b border-gray-100 dark:border-gray-800"
+            <button
+              onClick={() => {
+                  if (isAboutOpen) {
+                    closeAbout();
+                  } else {
+                    openAbout();
+                  }
+                setIsMobileMenuOpen(false);
+              }}
+              type="button"
+              className="text-left text-sm font-medium py-2 border-b border-gray-100 dark:border-gray-800"
             >
-              Quem somos
-            </Link>
+              {isAboutOpen ? 'Fechar' : 'Sobre'}
+            </button>
             
             {user ? (
               // Authenticated: Show Dashboard + Logout
@@ -148,14 +170,14 @@ export default function PublicHeader() {
                           ? user.profile_image 
                           : `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}${user.profile_image}`
                         } 
-                        alt={user.name}
+                        alt={userDisplayName}
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      user.name.charAt(0).toUpperCase()
+                      userInitial
                     )}
                   </div>
-                  <span className="text-sm font-medium">{user.name}</span>
+                  <span className="text-sm font-medium">{userDisplayName}</span>
                 </div>
                 <Link
                   href={user.role === "teacher" ? "/app-area/professor" : "/app-area/estudante"}

@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useSWRConfig } from 'swr';
-import { toast } from 'sonner';
 import { useAuth } from '@/features/auth';
+import { useNotification } from '@/lib/hooks/useNotification';
 import { deleteAccount } from '@/features/auth/services/auth.service';
 import { useChatStore } from '@/stores';
 import { INTEREST_GROUPS, getInterestLabel, normalizeInterestIds } from '@/lib/constants/interests';
@@ -18,6 +19,7 @@ export default function SettingsSidebar({ open, onClose }: SettingsSidebarProps)
   const { user, logout, setUser } = useAuth();
   const router = useRouter();
   const resetChat = useChatStore((state) => state.resetChat);
+  const { success, error: errorToast } = useNotification();
 
   const { mutate: globalMutate } = useSWRConfig();
 
@@ -61,6 +63,11 @@ export default function SettingsSidebar({ open, onClose }: SettingsSidebarProps)
         });
 
         if (!response.ok) {
+          if (response.status === 401) {
+            setLoadError('Sessao expirada. Faca login novamente.');
+            return;
+          }
+
           console.warn('[SettingsSidebar] Profile API status:', response.status);
           setLoadError(`Erro ao carregar perfil (status ${response.status})`);
           return;
@@ -107,20 +114,20 @@ export default function SettingsSidebar({ open, onClose }: SettingsSidebarProps)
 
     // Validar tipo de arquivo (segurança)
     if (!file.type.startsWith('image/')) {
-      toast.error('Arquivo inválido. Selecione uma imagem.');
+      errorToast('Arquivo inválido. Selecione uma imagem.');
       return;
     }
 
     const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
-      toast.error('Tipo de arquivo não permitido. Use PNG, JPG ou WEBP.');
+      errorToast('Tipo de arquivo não permitido. Use PNG, JPG ou WEBP.');
       return;
     }
 
     // Validar tamanho (2MB - segurança)
     const maxSize = 2 * 1024 * 1024;
     if (file.size > maxSize) {
-      toast.error(`Arquivo muito grande. Máximo: 2MB. Tamanho atual: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+      errorToast(`Arquivo muito grande. Máximo: 2MB. Tamanho atual: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
       return;
     }
 
@@ -152,12 +159,12 @@ export default function SettingsSidebar({ open, onClose }: SettingsSidebarProps)
 
   const handleDeleteAccount = async () => {
     if (!deletePassword) {
-      toast.error('Digite sua senha para confirmar.');
+      errorToast('Digite sua senha para confirmar.');
       return;
     }
 
     if (deleteConfirmText.trim().toUpperCase() !== 'DELETE') {
-      toast.error('Digite DELETE para confirmar a exclusão.');
+      errorToast('Digite DELETE para confirmar a exclusão.');
       return;
     }
 
@@ -175,12 +182,12 @@ export default function SettingsSidebar({ open, onClose }: SettingsSidebarProps)
       await globalMutate(() => true);
       await logout();
 
-      toast.success('Conta excluída com sucesso.');
+      success('Conta excluída com sucesso!');
       closeDeleteModal();
       onClose();
       router.push('/');
     } catch (error: any) {
-      toast.error(error?.message || 'Erro ao excluir conta');
+      errorToast(error?.message || 'Erro ao excluir conta');
       console.error('[SettingsSidebar] Delete account error:', error);
     } finally {
       setIsDeleting(false);
@@ -227,10 +234,10 @@ export default function SettingsSidebar({ open, onClose }: SettingsSidebarProps)
       // 🔥 Limpar preview após sucesso
       clearAvatarPreview();
 
-      toast.success('Perfil atualizado com sucesso!');
+      success('Perfil atualizado com sucesso!');
       onClose();
     } catch (error: any) {
-      toast.error(error.message || 'Erro ao atualizar perfil');
+      errorToast(error.message || 'Erro ao atualizar perfil');
       console.error('[SettingsSidebar] Save error:', error);
     } finally {
       setIsSaving(false);
@@ -247,15 +254,15 @@ export default function SettingsSidebar({ open, onClose }: SettingsSidebarProps)
         : `${API_URL}${user.profile_image}`)
     : null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex">
+  return createPortal(
+    <div className="fixed inset-0 z-[1500]">
       <div
-        className="flex-1 bg-black/40"
+        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
         onClick={onClose}
       />
 
-      <div className="w-full max-w-xl bg-white h-full shadow-xl overflow-hidden dark:bg-gray-800 flex flex-col">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0">
+      <aside className="absolute right-0 top-0 flex h-full w-full max-w-xl flex-col border-l border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 p-6 dark:border-gray-700">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             Configurações
           </h2>
@@ -275,7 +282,7 @@ export default function SettingsSidebar({ open, onClose }: SettingsSidebarProps)
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+        <div className="custom-scrollbar flex-1 space-y-8 overflow-y-auto p-6">
           {loadError && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
               {loadError}
@@ -430,7 +437,7 @@ export default function SettingsSidebar({ open, onClose }: SettingsSidebarProps)
           )}
         </div>
 
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shrink-0">
+        <div className="shrink-0 border-t border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900">
           <div className="flex gap-3">
             <button
               onClick={onClose}
@@ -448,7 +455,7 @@ export default function SettingsSidebar({ open, onClose }: SettingsSidebarProps)
             </button>
           </div>
         </div>
-      </div>
+      </aside>
 
       {showDeleteModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
@@ -504,6 +511,7 @@ export default function SettingsSidebar({ open, onClose }: SettingsSidebarProps)
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }

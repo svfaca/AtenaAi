@@ -7,6 +7,9 @@ import { useRouter } from 'next/navigation';
 import { useThemeMode } from '@/lib/hooks/useThemeMode';
 import { useUIStore } from '@/stores';
 import { useAuth } from '@/features/auth';
+import { useAboutModal, AboutModal } from '@/features/about';
+import { useClassroomView } from '@/features/classrooms/hooks/useClassroomView';
+import ClassroomPageModal from '@/features/classrooms/components/modals/ClassroomPageModal';
 import AppShell from '@/shared/layout/AppShell';
 import StudentSidebar from './StudentSidebar';
 import SettingsSidebar from './SettingsSidebar';
@@ -27,6 +30,12 @@ type StudentLayoutProps = {
 export default function StudentLayout({ children }: StudentLayoutProps) {
   const { theme, toggleTheme } = useThemeMode();
   const router = useRouter();
+  const { isOpen: isAboutOpen, openAbout, closeAbout } = useAboutModal();
+  const {
+    isOpen: isClassroomOpen,
+    classroom,
+    closeClassroom,
+  } = useClassroomView();
   const { user, logout } = useAuth(); // 🎯 Use AuthContext instead of static prop
   
   // UI state from UI store
@@ -43,6 +52,13 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
   const userInitial = useMemo(() => {
     return userName?.trim()?.charAt(0)?.toUpperCase() || 'U';
   }, [userName]);
+
+  const handleBrandClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (isAboutOpen) {
+      event.preventDefault();
+      closeAbout();
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -68,14 +84,14 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
           </svg>
         </button>
 
-        <Link href="/" className="flex items-center text-xl font-bold text-gray-900 dark:text-gray-100">
+        <Link href="/" onClick={handleBrandClick} className="flex items-center text-xl font-bold text-gray-900 dark:text-gray-100">
           <Image
             src={theme === 'dark' ? '/logo/logo-icon-dark.png' : '/logo/logo-icon-ligth.png'}
             alt="AtenaAI"
             width={32}
             height={32}
             className="mr-2"
-            style={{ height: 'auto' }}
+            style={{ width: 'auto', height: 'auto' }}
           />
           AtenaAI
         </Link>
@@ -102,12 +118,13 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
           )}
         </button>
 
-        <Link
-          href="/quem-somos"
+        <button
+          onClick={isAboutOpen ? closeAbout : openAbout}
           className="hidden text-sm font-medium text-gray-600 transition-colors hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 md:block"
+          type="button"
         >
-          Quem Somos
-        </Link>
+          {isAboutOpen ? 'Fechar' : 'Sobre'}
+        </button>
       </div>
     </header>
   );
@@ -137,6 +154,13 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
       header={header}
       sidebar={sidebar}
       settingsPanel={settingsPanel}
+      about={
+        isClassroomOpen ? (
+          <ClassroomPageModal classroom={classroom} onClose={closeClassroom} />
+        ) : (
+          isAboutOpen && <AboutModal />
+        )
+      }
     >
       {children}
     </AppShell>

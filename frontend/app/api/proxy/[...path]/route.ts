@@ -2,9 +2,9 @@ import { NextRequest } from 'next/server'
 import { proxy, proxyStream } from '@/lib/server/proxy'
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     path: string[]
-  }
+  }>
 }
 
 function buildBackendPath(request: NextRequest, path: string[]) {
@@ -13,7 +13,8 @@ function buildBackendPath(request: NextRequest, path: string[]) {
 }
 
 async function handle(request: NextRequest, context: RouteContext) {
-  const backendPath = buildBackendPath(request, context.params.path)
+  const { path } = await context.params
+  const backendPath = buildBackendPath(request, path)
   const acceptsStream = request.headers.get('accept')?.includes('text/event-stream')
 
   if (acceptsStream) {
