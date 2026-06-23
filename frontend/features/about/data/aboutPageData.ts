@@ -139,6 +139,6 @@ export const aboutPageData = {
     importantTip:
       'A IA funciona melhor quando voce explica sua duvida, mostra seu raciocinio e pede exemplos ou exercicios.',
     ctaLabel: 'Comecar conversa',
-    ctaHref: '/scholar',
+    ctaHref: '/',
   },
 }
