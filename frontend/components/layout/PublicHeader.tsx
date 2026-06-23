@@ -41,7 +41,7 @@ export function PublicHeader() {
           <img 
             src={theme === 'dark' ? '/logo/logo-icon-dark.png' : '/logo/logo-icon-ligth.png'}
             alt="AtenaAI" 
-            className="h-8 w-8 mr-2"
+            className="h-8 w-auto object-contain mr-2"
           />
           <span className="hidden sm:inline">AtenaAI</span>
         </Link>

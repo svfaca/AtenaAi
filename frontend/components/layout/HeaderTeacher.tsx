@@ -66,7 +66,7 @@ export default function HeaderTeacher({ session }: { session: Session }) {
           <img 
             src={theme === 'dark' ? '/logo/logo-icon-dark.png' : '/logo/logo-icon-ligth.png'}
             alt="AtenaAI" 
-            className="h-8 w-8"
+            className="h-8 w-auto object-contain"
           />
           <span className="hidden sm:inline">AtenaAI</span>
         </a>
