@@ -1,8 +1,10 @@
 import { aboutPageData } from '../../data/aboutPageData'
+import { useAboutModal } from '@/features/about'
 import { AboutCTA } from './AboutCTA'
 
 export function AboutStudent() {
   const content = aboutPageData.student
+  const { closeAbout } = useAboutModal()
 
   return (
     <div className="bg-slate-50 dark:bg-slate-950">
@@ -40,7 +42,11 @@ export function AboutStudent() {
         </div>
       </section>
 
-      <AboutCTA title="Pronto para estudar agora?" actions={[{ label: content.ctaLabel, href: content.ctaHref }]} />
+      <AboutCTA
+        title="Pronto para estudar agora?"
+        actions={[{ label: content.ctaLabel, href: content.ctaHref }]}
+        onActionClick={closeAbout}
+      />
     </div>
   )
 }
