@@ -6,10 +6,16 @@ from typing import List
 from app.database.database import get_db
 from app.models.user import User, UserRole
 from app.models.classroom import Classroom, classroom_students, pending_classroom_students
+from app.models.classroom_member import ClassroomMember, ClassroomMemberRole
 from app.models.notification import Notification, NotificationType
 from app.core.dependencies import get_current_user
 from app.core.permissions import require_role
-from app.schemas.teacher import ClassroomJoinRequest, ClassroomJoinResponse, ClassroomCreate, ClassroomResponse, ClassroomDetailResponse, StudentResponse, ClassroomFullResponse, ClassroomSimpleResponse
+from app.schemas.teacher import (
+    ClassroomJoinRequest, ClassroomJoinResponse, ClassroomCreate, ClassroomResponse, 
+    ClassroomDetailResponse, StudentResponse, ClassroomFullResponse, ClassroomSimpleResponse,
+    ClassroomMemberCreate, ClassroomMemberUpdate, ClassroomMemberResponse, 
+    ClassroomWithMembersResponse
+)
 from app.utils.classroom_code import generate_classroom_code
 
 router = APIRouter(
@@ -658,6 +664,238 @@ def delete_classroom(
         logger.error(f"[CLASSROOMS] ❌ ERRO ao deletar turma {classroom_id}: {str(e)}", exc_info=True)
         logger.error(f"[CLASSROOMS] Traceback completo:\n{traceback.format_exc()}")
         raise HTTPException(500, f"Erro ao deletar sala: {str(e)}")
+
+
+# =========================================================
+# TEACHER: RENAME CLASSROOM
+# ========================================================
+
+@router.patch("/{classroom_id}", response_model=ClassroomResponse)
+def rename_classroom(
+    classroom_id: int,
+    data: ClassroomCreate,
+    current_user: User = Depends(require_role(UserRole.teacher)),
+    db: Session = Depends(get_db)
+):
+    """Professor renomeia uma sala de aula"""
+    classroom = db.query(Classroom).filter_by(
+        id=classroom_id,
+        teacher_id=current_user.id
+    ).first()
+
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Sala não encontrada")
+
+    new_name = (data.name or "").strip()
+    if not new_name:
+        raise HTTPException(status_code=400, detail="Nome da sala é obrigatório")
+
+    classroom.name = new_name
+    db.commit()
+    db.refresh(classroom)
+
+    return classroom
+
+
+# =========================================================
+# 🆕 CLASSROOM MEMBERS MANAGEMENT (with granular roles)
+# =========================================================
+
+@router.get("/{classroom_id}/members", response_model=List[ClassroomMemberResponse])
+def get_classroom_members(
+    classroom_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Lista membros de uma classroom com seus roles.
+    Acessível por: Teacher (dono), Moderators, ou Admins da sala
+    """
+    # Verificar acesso à sala
+    classroom = db.query(Classroom).filter_by(id=classroom_id).first()
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Sala não encontrada")
+    
+    # Verificar permissão (teacher da sala)
+    if classroom.teacher_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Sem permissão para ver membros")
+    
+    # Buscar membros
+    members = db.query(ClassroomMember).filter_by(classroom_id=classroom_id).all()
+    
+    # Enriquecer com dados do usuário
+    result = []
+    for member in members:
+        user = db.query(User).filter_by(id=member.user_id).first()
+        response = ClassroomMemberResponse(
+            id=member.id,
+            classroom_id=member.classroom_id,
+            user_id=member.user_id,
+            role=member.role.value,
+            joined_at=member.joined_at,
+            user_name=user.full_name if user else "Unknown",
+            user_email=user.email if user else None
+        )
+        result.append(response)
+    
+    return result
+
+
+@router.post("/{classroom_id}/members", response_model=ClassroomMemberResponse, status_code=201)
+def add_classroom_member(
+    classroom_id: int,
+    data: ClassroomMemberCreate,
+    current_user: User = Depends(require_role(UserRole.teacher)),
+    db: Session = Depends(get_db)
+):
+    """
+    Adiciona um membro à classroom com um role específico.
+    Apenas o teacher (dono) pode fazer isso.
+    """
+    # Verificar que o teacher é dono da sala
+    classroom = db.query(Classroom).filter_by(
+        id=classroom_id,
+        teacher_id=current_user.id
+    ).first()
+    
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Sala não encontrada")
+    
+    # Verificar que o usuário existe
+    user = db.query(User).filter_by(id=data.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    # Verificar se já é membro
+    existing = db.query(ClassroomMember).filter_by(
+        classroom_id=classroom_id,
+        user_id=data.user_id
+    ).first()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="Usuário já é membro da sala")
+    
+    # Validar role
+    try:
+        role = ClassroomMemberRole[data.role]
+    except KeyError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Role inválido. Opções: {', '.join([r.name for r in ClassroomMemberRole])}"
+        )
+    
+    # Criar membro
+    member = ClassroomMember(
+        classroom_id=classroom_id,
+        user_id=data.user_id,
+        role=role
+    )
+    
+    db.add(member)
+    db.commit()
+    db.refresh(member)
+    
+    return ClassroomMemberResponse(
+        id=member.id,
+        classroom_id=member.classroom_id,
+        user_id=member.user_id,
+        role=member.role.value,
+        joined_at=member.joined_at,
+        user_name=user.full_name,
+        user_email=user.email
+    )
+
+
+@router.put("/{classroom_id}/members/{member_id}/role", response_model=ClassroomMemberResponse)
+def update_member_role(
+    classroom_id: int,
+    member_id: int,
+    data: ClassroomMemberUpdate,
+    current_user: User = Depends(require_role(UserRole.teacher)),
+    db: Session = Depends(get_db)
+):
+    """
+    Atualiza o role de um membro.
+    Apenas o teacher (dono) pode fazer isso.
+    """
+    # Verificar permissão
+    classroom = db.query(Classroom).filter_by(
+        id=classroom_id,
+        teacher_id=current_user.id
+    ).first()
+    
+    if not classroom:
+        raise HTTPException(status_code=403, detail="Sem permissão para modificar membros")
+    
+    # Buscar membro
+    member = db.query(ClassroomMember).filter_by(
+        id=member_id,
+        classroom_id=classroom_id
+    ).first()
+    
+    if not member:
+        raise HTTPException(status_code=404, detail="Membro não encontrado")
+    
+    # Validar novo role
+    try:
+        new_role = ClassroomMemberRole[data.role]
+    except KeyError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Role inválido. Opções: {', '.join([r.name for r in ClassroomMemberRole])}"
+        )
+    
+    # Atualizar
+    member.role = new_role
+    db.commit()
+    db.refresh(member)
+    
+    user = db.query(User).filter_by(id=member.user_id).first()
+    
+    return ClassroomMemberResponse(
+        id=member.id,
+        classroom_id=member.classroom_id,
+        user_id=member.user_id,
+        role=member.role.value,
+        joined_at=member.joined_at,
+        user_name=user.full_name if user else "Unknown",
+        user_email=user.email if user else None
+    )
+
+
+@router.delete("/{classroom_id}/members/{member_id}", status_code=204)
+def remove_classroom_member(
+    classroom_id: int,
+    member_id: int,
+    current_user: User = Depends(require_role(UserRole.teacher)),
+    db: Session = Depends(get_db)
+):
+    """
+    Remove um membro da classroom.
+    Apenas o teacher (dono) pode fazer isso.
+    """
+    # Verificar permissão
+    classroom = db.query(Classroom).filter_by(
+        id=classroom_id,
+        teacher_id=current_user.id
+    ).first()
+    
+    if not classroom:
+        raise HTTPException(status_code=403, detail="Sem permissão para modificar membros")
+    
+    # Buscar e remover membro
+    member = db.query(ClassroomMember).filter_by(
+        id=member_id,
+        classroom_id=classroom_id
+    ).first()
+    
+    if not member:
+        raise HTTPException(status_code=404, detail="Membro não encontrado")
+    
+    db.delete(member)
+    db.commit()
+    
+    return None
 
 
 

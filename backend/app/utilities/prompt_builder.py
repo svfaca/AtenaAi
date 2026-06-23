@@ -5,7 +5,7 @@ Evita string concatenation ineficiente.
 Impacto: -15% a -30% de tempo em processamento de prompts
 """
 from datetime import date
-from typing import Optional
+from typing import Optional, List, Union
 
 
 def build_user_context(
@@ -15,7 +15,7 @@ def build_user_context(
     user_gender: Optional[str] = None,
     user_birth_date: Optional[date] = None,
     user_account_type: Optional[str] = None,
-    user_interests: Optional[str] = None
+    user_interests: Optional[Union[str, List[str]]] = None
 ) -> str:
     """
     Constrói contexto do usuário de forma eficiente usando list.join().
@@ -59,7 +59,12 @@ def build_user_context(
         context_parts.append(f"Tipo de Conta: {user_account_type}")
     
     if user_interests:
-        context_parts.append(f"Áreas de Interesse: {user_interests}")
+        # Aceita lista ou string
+        if isinstance(user_interests, list):
+            interests_str = ", ".join(user_interests)
+        else:
+            interests_str = user_interests
+        context_parts.append(f"Áreas de Interesse: {interests_str}")
     
     # Se sem dados, retorna vazio
     if not context_parts:

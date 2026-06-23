@@ -4,7 +4,7 @@ websockets>=12.0
 openai>=1.3.5
 pydantic>=2.5.0
 sqlalchemy>=2.0.23
-# psycopg2-binary==2.9.9  # Only needed for PostgreSQL, commented for development with SQLite
+psycopg2-binary>=2.9.9  # PostgreSQL driver (needed for Docker)
 python-jose[cryptography]>=3.3.0
 bcrypt>=4.1.1
 python-multipart>=0.0.6

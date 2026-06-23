@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, Text, Date, Enum
+from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Enum
 from sqlalchemy.orm import relationship
+from datetime import datetime
 import enum
 
 from app.database.database import Base
@@ -44,6 +45,13 @@ class User(Base):
     birth_date = Column(Date, nullable=True)
 
     # ========================
+    # Soft Delete
+    # ========================
+    deleted_at = Column(DateTime, nullable=True, default=None, index=True)
+    deleted_by = Column(Integer, nullable=True)
+    delete_scheduled_at = Column(DateTime, nullable=True)
+
+    # ========================
     # Relacionamentos
     # ========================
     conversations = relationship(
@@ -62,6 +70,20 @@ class User(Base):
     # Notificações
     notifications = relationship(
         "Notification",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    
+    # 🆕 Memberships em classrooms com roles
+    classroom_memberships = relationship(
+        "ClassroomMember",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    
+    # Group messages
+    group_messages = relationship(
+        "GroupMessage",
         back_populates="user",
         cascade="all, delete-orphan"
     )

@@ -4,6 +4,7 @@ from typing import List
 from datetime import datetime
 import json
 import logging
+import asyncio
 from jose import JWTError, jwt
 
 from app.database.database import get_db, SessionLocal
@@ -11,6 +12,7 @@ from app.models.user import User
 from app.models.classroom import Classroom, classroom_students
 from app.models.group_message import GroupMessage
 from app.services.websocket_manager import manager
+from app.services.ai_service import detect_ai_mention, generate_classroom_ai_response, get_ai_user_representation
 from app.core.dependencies import get_current_user
 from app.core.security import SECRET_KEY, ALGORITHM
 
@@ -175,6 +177,23 @@ async def websocket_endpoint(
                         
                         await manager.broadcast(classroom_id, broadcast_data)
                         logger.debug(f"[WebSocket] Message broadcast from {user_name} to classroom {classroom_id}")
+                        
+                        # 🆕 CHECK FOR AI MENTION
+                        has_ai_mention, clean_prompt = detect_ai_mention(message_content)
+                        
+                        if has_ai_mention and clean_prompt:
+                            logger.info(f"[AI] Mention detected from {user_name} in classroom {classroom_id}")
+                            
+                            # Generate AI response asynchronously (non-blocking)
+                            asyncio.create_task(
+                                _handle_ai_response(
+                                    clean_prompt,
+                                    classroom_id,
+                                    user.id,
+                                    user_name,
+                                    user.interests
+                                )
+                            )
                     finally:
                         msg_db.close()
                 
@@ -302,3 +321,74 @@ async def get_online_users(
     
     # Retornar usuários conectados
     return manager.get_classroom_users(classroom_id)
+
+
+# =========================================================
+# 🆕 AI RESPONSE HANDLER (Async background task)
+# =========================================================
+
+async def _handle_ai_response(
+    prompt: str,
+    classroom_id: int,
+    user_id: int,
+    user_name: str,
+    user_interests: str = None
+):
+    """
+    Handles AI response generation and broadcasts it to the classroom
+    Runs as a background task to not block the WebSocket
+    """
+    try:
+        logger.info(f"[AI] Generating response for: {prompt[:50]}...")
+        
+        # Generate AI response
+        ai_response = await generate_classroom_ai_response(
+            prompt=prompt,
+            classroom_id=classroom_id,
+            user_id=user_id,
+            user_name=user_name,
+            user_interests=user_interests
+        )
+        
+        if not ai_response:
+            logger.warning("[AI] No response generated")
+            return
+        
+        # Create database session to save AI message
+        ai_db = SessionLocal()
+        try:
+            # Save AI message to database
+            ai_message = GroupMessage(
+                content=ai_response,
+                classroom_id=classroom_id,
+                user_id=0,  # Special ID for AI
+                created_at=datetime.utcnow()
+            )
+            
+            ai_db.add(ai_message)
+            ai_db.commit()
+            ai_db.refresh(ai_message)
+            
+            # Broadcast AI response
+            ai_user = get_ai_user_representation()
+            broadcast_data = {
+                "type": "message",
+                "id": ai_message.id,
+                "content": ai_response,
+                "user_id": ai_user["user_id"],
+                "user_name": ai_user["user_name"],
+                "user_role": ai_user["role"],
+                "timestamp": ai_message.created_at.isoformat(),
+                "is_ai": True
+            }
+            
+            await manager.broadcast(classroom_id, broadcast_data)
+            logger.info(f"[AI] Response broadcast to classroom {classroom_id}")
+            
+        except Exception as e:
+            logger.error(f"[AI] Error saving AI message: {str(e)}", exc_info=True)
+        finally:
+            ai_db.close()
+            
+    except Exception as e:
+        logger.error(f"[AI] Error in _handle_ai_response: {str(e)}", exc_info=True)

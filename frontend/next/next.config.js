@@ -1,10 +1,5 @@
-const path = require('path');
-
 const nextConfig = {
-  reactStrictMode: true,
-  turbopack: {
-    root: path.join(__dirname),
-  },
+  reactStrictMode: true
 };
 
 module.exports = nextConfig;

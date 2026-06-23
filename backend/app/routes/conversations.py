@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
 from typing import List, Optional
@@ -11,8 +12,9 @@ from app.schemas.message import ChatMessage
 from app.schemas.chat import ConversationResponse
 from app.schemas.pagination import PaginationParams, PaginatedResponse
 from app.core.dependencies import get_current_user, get_db
-from app.core.prompts import get_system_prompt
-from app.services.ai_service import get_client
+from app.services.ai_service import generate_ai_response, generate_ai_response_stream
+from app.core.config import AI_MODEL
+from app.utilities.interests import parse_interests
 
 router = APIRouter(prefix="/conversations", tags=["Conversations"])
 
@@ -192,33 +194,31 @@ def send_message(
         content=content
     )
     db.add(user_msg)
+    db.flush()  # Flush to get the message in the query below
     
-    # 2. Prepara dados para a IA (Prompt Personalizado)
-    user_data = {
-        "name": user.full_name,
-        "nickname": user.nickname,
-        "birth_date": user.birth_date,
-        "gender": user.gender,
-        "interests": user.interests,
-        "account_type": user.account_type
-    }
+    # 2. Monta histórico de mensagens para a IA
+    messages_query = db.query(Message).filter(
+        Message.conversation_id == conv.id
+    ).order_by(Message.created_at).all()
     
-    system_instruction = get_system_prompt(payload.language or "pt-BR", user_data)
-    
-    # Monta histórico para a API da OpenAI
-    messages_query = db.query(Message).filter(Message.conversation_id == conv.id).order_by(Message.created_at).all()
-    history = [{"role": "system", "content": system_instruction}]
-    for msg in messages_query:
-        history.append({"role": msg.role, "content": msg.content})
+    history = [{"role": msg.role, "content": msg.content} for msg in messages_query]
 
-    # 3. Chama IA
+    # 3. Chama IA com dados do usuário (🔥 Personalização)
     try:
-        client = get_client()
-        response = client.chat.completions.create(
-            model="gpt-5.2",
-            messages=history
+        user_role = user.role.value if hasattr(user.role, "value") else str(user.role)
+
+        reply = generate_ai_response(
+            messages=history,
+            user_id=user.id,
+            user_name=user.full_name,
+            user_nickname=user.nickname,
+            user_email=user.email,
+            user_gender=user.gender,
+            user_birth_date=user.birth_date,
+            user_account_type=user_role,
+            user_interests=parse_interests(user.interests),
+            language=payload.language or "pt-BR"
         )
-        reply = response.choices[0].message.content
 
         # 4. Salva resposta da IA
         ai_msg = Message(
@@ -237,6 +237,96 @@ def send_message(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro na IA: {str(e)}")
+
+# ============================
+# 4.1. ENVIAR MENSAGEM COM STREAMING
+# ============================
+@router.post("/{conversation_id}/messages/stream")
+def send_message_stream(
+    conversation_id: int,
+    payload: ChatMessage,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
+):
+    """Stream AI response token by token"""
+    
+    conv = db.query(Conversation).filter(
+        Conversation.id == conversation_id,
+        Conversation.user_id == user.id
+    ).first()
+
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversa não encontrada"
+        )
+
+    # 1. Salva mensagem do usuário
+    content = payload.text if hasattr(payload, 'text') else payload.content
+    
+    user_msg = Message(
+        conversation_id=conv.id,
+        role="user",
+        content=content
+    )
+    db.add(user_msg)
+    db.commit()
+    
+    # 2. Monta histórico de mensagens
+    messages_query = db.query(Message).filter(
+        Message.conversation_id == conv.id
+    ).order_by(Message.created_at).all()
+    
+    history = [{"role": msg.role, "content": msg.content} for msg in messages_query]
+
+    # 3. Configura parâmetros do usuário
+    user_role = user.role.value if hasattr(user.role, "value") else str(user.role)
+
+    ai_params = {
+        "user_id": user.id,
+        "user_name": user.full_name,
+        "user_nickname": user.nickname,
+        "user_email": user.email,
+        "user_gender": user.gender,
+        "user_birth_date": user.birth_date,
+        "user_account_type": user_role,
+        "user_interests": parse_interests(user.interests),
+        "language": payload.language or "pt-BR"
+    }
+
+    # 4. Gera resposta com streaming e salva ao final
+    def generate_and_save():
+        full_response = ""
+        
+        try:
+            for token in generate_ai_response_stream(history, **ai_params):
+                full_response += token
+                yield token
+            
+            # Salvar resposta completa no banco (após streaming)
+            from app.database.database import SessionLocal
+            db_save = SessionLocal()
+            try:
+                ai_msg = Message(
+                    conversation_id=conv.id,
+                    role="assistant",
+                    content=full_response
+                )
+                db_save.add(ai_msg)
+                
+                # Atualiza timestamp da conversa
+                db_save.query(Conversation)\
+                    .filter(Conversation.id == conv.id)\
+                    .update({"updated_at": datetime.utcnow()})
+                
+                db_save.commit()
+            finally:
+                db_save.close()
+                
+        except Exception as e:
+            yield f"\n\n[Erro: {str(e)}]"
+
+    return StreamingResponse(generate_and_save(), media_type="text/event-stream")
 
 # ============================
 # 5. DUPLICAR CONVERSA

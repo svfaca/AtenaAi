@@ -1,0 +1,77 @@
+version: '3.8'
+
+# ====================================
+# Docker Compose - PRODUÇÃO
+# ====================================
+# Uso: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  db:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}  # OBRIGATÓRIO em .env
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 512M
+
+  backend:
+    build:
+      target: production
+    environment:
+      ENVIRONMENT: production
+      LOG_LEVEL: WARNING
+    volumes:
+      # Remove volume de código em produção (usa apenas uploads)
+      - backend_uploads:/app/uploads
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    build:
+      target: production
+    environment:
+      NODE_ENV: production
+    volumes:
+      # Remove volumes de código em produção
+      - type: tmpfs
+        target: /app/.next/cache
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  backend_uploads:
+    driver: local

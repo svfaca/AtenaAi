@@ -100,8 +100,8 @@ ALLOWED_UPLOAD_TYPES = {"image/jpeg", "image/png", "image/webp"}
 # =========================================================
 
 RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
-GUEST_RATE_LIMIT = (10, 3600)  # 10 requests per hour
-USER_RATE_LIMIT = (100, 60)    # 100 requests per minute
+GUEST_RATE_LIMIT = (10, 86400)  # 10 requests per day
+USER_RATE_LIMIT = (100, 60)     # 100 requests per minute
 
 # =========================================================
 # LOGGING CONFIG

@@ -71,6 +71,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     EXEMPT_PATHS = {
         "/api/v1/auth/register",
         "/api/v1/auth/check-email",
+        "/api/v1/chat/",  # Chat route handles its own rate limiting
         "/docs",
         "/openapi.json"
     }
