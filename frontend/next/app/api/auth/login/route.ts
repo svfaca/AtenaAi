@@ -22,9 +22,9 @@ export async function POST(request: NextRequest) {
     formData.append('username', normalizedEmail);
     formData.append('password', body.password);
 
-    console.log('[Auth] Calling backend:', `${backendUrl}/api/v1/auth/login`);
+    console.log('[Auth] Calling backend:', `${backendUrl}/auth/login`);
 
-    const response = await fetch(`${backendUrl}/api/v1/auth/login`, {
+    const response = await fetch(`${backendUrl}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: formData.toString(),

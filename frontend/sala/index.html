@@ -1,0 +1,2050 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <title>AtenaAI � Turma</title>
+
+    <!-- ? Aplicar tema ANTES de qualquer renderiza��o (evita flash) -->
+    <script>
+(function () {
+    const theme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    if (theme === 'dark' || (!theme && prefersDark)) {
+        document.documentElement.classList.add('dark');
+    }
+})();
+</script>
+
+
+    <!-- Script para calcular altura real do viewport -->
+    <script>
+    function setVH() {
+        const vh = window.visualViewport
+            ? window.visualViewport.height * 0.01
+            : window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+    setVH();
+    window.addEventListener('load', setVH);
+    window.addEventListener('resize', setVH);
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', setVH);
+    }
+    </script>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="../assets/logo/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/logo/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../assets/logo/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="../assets/logo/apple-touch-icon.png">
+
+    <script src="../js/utils/i18n.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Sistema de Toast Centralizado -->
+    <script type="module" src="../js/ui/toast.js"></script>
+    
+    <!-- ?? BLOCKER CSS - Bloqueia p�gina imediatamente, ANTES do body ser renderizado -->
+    <style>
+        /* Bloquear TUDO por padr�o at� valida��o */
+        body {
+            display: none !important;
+        }
+        /* Permitir apenas quando autorizado */
+        body.auth-allowed {
+            display: flex !important;
+        }
+    </style>
+    
+    <!-- ?? VERIFICA��O S�NCRONA - Bloqueia ANTES da renderiza��o, sem esperar m�dulos -->
+    <script>
+        // Fun��o s�ncrona - n�o usa async, executa imediatamente
+        (function() {
+            const token = localStorage.getItem("access_token");
+            const userStr = localStorage.getItem("user");
+            const pathname = window.location.pathname;
+            
+            // Rotas protegidas e seus roles permitidos
+            const routePermissions = {
+                "/estudante": ["student"],
+                "/professor": ["teacher", "admin"],
+                "/sala": ["student", "teacher", "admin"],  // ?? FIX: Alunos tamb�m podem acessar salas
+                "/admin": ["admin"]
+            };
+            
+            const roleDefaultPath = {
+                "student": "/frontend/estudante",
+                "teacher": "/frontend/professor",
+                "admin": "/frontend/professor"
+            };
+            
+            function getCurrentRoute(path) {
+                for (const route of Object.keys(routePermissions)) {
+                    if (path.includes(route)) return route;
+                }
+                return null;
+            }
+            
+            function isProtectedRoute(path) {
+                return getCurrentRoute(path) !== null;
+            }
+            
+            // Se n�o est� autenticado e tenta acessar rota protegida
+            if (!token && isProtectedRoute(pathname)) {
+                console.warn("[?? PRE-CHECK] ? N�o autenticado em rota protegida ? Bloqueando e redirecionando");
+                window.location.replace("/frontend/login/index.html");
+                return;
+            }
+            
+            // Se est� autenticado, verificar permiss�es
+            if (token && isProtectedRoute(pathname)) {
+                try {
+                    const user = JSON.parse(userStr || '{}');
+                    const currentRoute = getCurrentRoute(pathname);
+                    const allowedRoles = routePermissions[currentRoute];
+                    
+                    // Se o role n�o � permitido nesta rota
+                    if (user.role && !allowedRoles.includes(user.role)) {
+                        console.warn(`[?? PRE-CHECK] ? Role '${user.role}' n�o permitido em '${currentRoute}' ? Redirecionando`);
+                        const targetPath = roleDefaultPath[user.role] || "/frontend/estudante";
+                        window.location.replace(targetPath + "/index.html");
+                        return;
+                    }
+                } catch (e) {
+                    console.error("[?? PRE-CHECK] Erro ao parsear user:", e);
+                }
+            }
+    <!-- 🔐 VERIFICAÇÃO SÍNCRONA - Removida (usar cookies do guard.js) -->
+    <script>
+        window.__authAllowedByPreCheck = true;
+    </script>
+    
+    <script type="module" src="../js/middleware/guard.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+
+    <!-- ?? ATUALIZAR BADGE ANTES DO RENDER (evita delay) -->
+    <script>
+    (function() {
+        const userStr = localStorage.getItem('user');
+        const token = localStorage.getItem('access_token');
+        
+        // Fun��o para atualizar badge assim que o DOM estiver pronto
+        function updateBadgeSync() {
+            const headerBadge = document.getElementById('sala-header-badge');
+            
+            if (token && userStr && headerBadge) {
+                try {
+                    const userData = JSON.parse(userStr);
+                    if (userData.role === 'teacher' || userData.role === 'admin') {
+                        headerBadge.textContent = 'Professor';
+                    } else if (userData.role === 'student') {
+                        headerBadge.textContent = 'Estudante';
+                    }
+                } catch (e) {
+                    console.error('Erro ao atualizar badge:', e);
+                }
+            }
+        }
+        
+        // Executar assim que poss�vel
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', updateBadgeSync);
+        } else {
+            updateBadgeSync();
+        }
+    })();
+    </script>
+
+    <style>
+        /* GERAL */
+        html, body {
+            overflow: hidden;
+        }
+
+        /* SCROLLBARS */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: #CBD5E1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: #94A3B8; }
+        .dark ::-webkit-scrollbar-thumb { background-color: #374151; }
+        .dark ::-webkit-scrollbar-thumb:hover { background-color: #4B5563; }
+        textarea::-webkit-scrollbar { width: 0px; background: transparent; }
+
+        /* Message animations */
+        .message-item {
+            animation: fadeIn 0.25s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Mention highlight (legacy - pode ser removido se n�o usado) */
+        .mention-highlight {
+            background: linear-gradient(135deg, #3b82f6 0%, #a855f7 100%);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        
+        /* Mention highlights para mensagens */
+        span.mention-highlight {
+            transition: all 0.2s ease;
+        }
+        
+        span.mention-highlight:hover {
+            opacity: 0.9;
+            transform: scale(1.05);
+        }
+        
+        span.mention-highlight-ai {
+            transition: all 0.2s ease;
+        }
+        
+        span.mention-highlight-ai:hover {
+            opacity: 0.9;
+            transform: scale(1.05);
+        }
+        
+        /* Mention suggestions dropdown */
+        #mention-suggestions {
+            z-index: 1000;
+        }
+        
+        .mention-item {
+            cursor: pointer;
+        }
+        
+        .mention-item:hover {
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+        
+        /* Keyboard shortcuts */
+        kbd {
+            font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+            font-weight: 600;
+        }
+
+        /* AI Message glow */
+        .ai-message {
+            background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+            border-left: 3px solid #3b82f6;
+        }
+        .dark .ai-message {
+            background: linear-gradient(135deg, #1e3a8a 0%, #581c87 100%);
+            border-left: 3px solid #60a5fa;
+        }
+
+        /* Sidebar */
+        #sidebar {
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 16rem;
+            z-index: 40;
+        }
+        #sidebar.sidebar-collapsed {
+            width: 4.5rem !important;
+        }
+        #sidebar.sidebar-collapsed .sidebar-expanded-content {
+            display: none !important;
+        }
+        #sidebar.sidebar-collapsed .sidebar-collapsed-content {
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+        #sidebar:not(.sidebar-collapsed) .sidebar-collapsed-content {
+            display: none !important;
+        }
+
+        /* Mobile Layout */
+        @media (max-width: 767px) {
+            #sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                height: 100%;
+                z-index: 50;
+                transform: translateX(-100%);
+                width: 16rem !important;
+            }
+            #sidebar.mobile-open {
+                transform: translateX(0);
+            }
+            #sidebar.sidebar-collapsed {
+                width: 16rem !important;
+            }
+            #sidebar
+            .sidebar-collapsed .sidebar-expanded-content {
+                display: block !important;
+            }
+            #sidebar.sidebar-collapsed .sidebar-collapsed-content {
+                display: none !important;
+            }
+            #sidebar-right {
+                display: none;
+            }
+            #sidebar-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 45;
+            }
+            #sidebar-overlay.active {
+                display: block;
+            }
+            #sidebar-toggle {
+                display: none !important;
+            }
+        }
+
+        /* Sidebar item hover */
+        .sidebar-item {
+            transition: all 0.2s ease;
+        }
+        .sidebar-item:hover {
+            background: #f1f5f9;
+            transform: translateX(4px);
+        }
+        .dark .sidebar-item:hover {
+            background: #374151;
+        }
+        .sidebar-item.active {
+            background: #dbeafe;
+            color: #2563eb;
+            border-right: 3px solid #3b82f6;
+        }
+        .dark .sidebar-item.active {
+            background: #1e3a8a;
+            color: #93c5fd;
+            border-right: 3px solid #60a5fa;
+        }
+
+        /* Online indicator pulse */
+        .online-indicator {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Classroom expandable */
+        .classroom-item { transition: all 0.2s ease; }
+        .classroom-header { cursor: pointer; }
+        .classroom-header:hover { background: #F3F4F6; }
+        .dark .classroom-header:hover { background: #374151; }
+        .classroom-menu { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .classroom-menu.expanded { max-height: 500px; }
+        .classroom-toggle { transition: transform 0.3s ease; }
+        .classroom-toggle.expanded { transform: rotate(90deg); }
+
+        /* Conversation options menu */
+        .dots-btn {
+            transition: opacity 0.2s ease;
+        }
+        @media (max-width: 767px) {
+            .dots-btn { opacity: 1 !important; }
+        }
+
+        .conv-options-menu {
+            display: none;
+            position: absolute;
+            right: 0.5rem;
+            top: 2.5rem;
+            z-index: 50;
+            min-width: 140px;
+            background-color: white;
+            border: 1px solid #E5E7EB;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .dark .conv-options-menu { background-color: #1F2937; border-color: #374151; }
+        .conv-options-menu.active { display: block; }
+
+        /* Tab panels */
+        .tab-panel {
+            display: none;
+        }
+        .tab-panel.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Settings Modal */
+        .settings-modal { position: fixed; right: 0; top: 0; width: 100%; max-width: 500px; height: 100%; background: white; z-index: 60; transform: translateX(100%); transition: transform 0.3s ease-in-out; box-shadow: -2px 0 10px rgba(0,0,0,0.1); }
+        .settings-modal.active { transform: translateX(0); }
+        .dark .settings-modal { background: #1F2937; }
+        .settings-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 55; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .settings-modal-overlay.active { opacity: 1; pointer-events: auto; }
+    </style>
+</head>
+
+<body class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 flex flex-col overflow-hidden"
+      style="height: calc(var(--vh, 1vh) * 100);">
+
+    <!-- Sidebar Overlay (Mobile) -->
+    <div id="sidebar-overlay"></div>
+
+    <!-- Main Container -->
+    <div class="flex flex-1 overflow-hidden min-h-0">
+
+        <!-- Left Sidebar -->
+        <aside id="sidebar" class="bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col h-full">
+            <!-- User Header -->
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between h-16 shrink-0">
+                <div id="user-avatar" onclick="if(window.innerWidth >= 768 && document.getElementById('sidebar').classList.contains('sidebar-collapsed')) document.getElementById('sidebar-toggle').click()" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold select-none relative cursor-pointer hover:opacity-90 transition-opacity">
+                    <img loading="lazy" id="avatar-image" class="w-full h-full object-cover hidden rounded-full" src="" alt="Avatar">
+                    <span id="avatar-initial">U</span>
+                </div>
+                <div class="sidebar-expanded-content flex-1 ml-3 overflow-hidden">
+                    <p id="user-name" class="font-semibold text-sm truncate text-gray-800 dark:text-gray-100">Carregando...</p>
+                    <p id="user-role" class="text-xs text-gray-500 truncate" data-i18n="auth.student">Estudante</p>
+                </div>
+                <button id="sidebar-toggle" class="sidebar-expanded-content p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+            </div>
+
+            <!-- Navigation Menu -->
+            <nav class="flex-1 overflow-y-auto overflow-x-hidden relative">
+                <div class="sidebar-expanded-content p-3 space-y-3">
+                    <!-- Salas Section -->
+                    <div class="flex items-center justify-between px-1">
+                        <p class="text-xs uppercase text-gray-500 font-bold tracking-wider" data-i18n="chat.classrooms">Salas</p>
+                        <button id="add-classroom-btn" class="text-xs text-blue-600 font-medium hover:text-blue-700 transition-colors flex items-center gap-1" title="Entrar em uma sala">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <span data-i18n="chat.addClassroom">Entrar</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Current Classroom (expanded) -->
+                    <div id="current-classroom" class="classroom-item rounded-xl border-2 border-blue-500 dark:border-blue-400 overflow-hidden">
+                        <div class="classroom-header flex items-center gap-2 p-2">
+                            <button class="classroom-toggle-btn p-0.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded" data-current="true">
+                                <svg class="classroom-toggle w-3 h-3 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                            </button>
+                            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                <span id="classroom-initials">MA</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p id="sidebar-classroom-name" class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">Carregando...</p>
+                                <p id="sidebar-teacher-name" class="text-xs text-gray-500 truncate">Prof: ...</p>
+                            </div>
+                        </div>
+                        <!-- Classroom Tabs -->
+                        <div class="classroom-menu p-1 space-y-0.5">
+                            <button data-tab="chat" class="sidebar-item active w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                                </svg>
+                                <span data-i18n="classroom.chat">Chat</span>
+                                <span class="ml-auto bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 text-xs font-bold px-1.5 py-0.5 rounded-full">12</span>
+                            </button>
+                            <button data-tab="activities" class="sidebar-item w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                                </svg>
+                                <span data-i18n="classroom.activities">Atividades</span>
+                                <span class="ml-auto bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-300 text-xs font-bold px-1.5 py-0.5 rounded-full">3</span>
+                            </button>
+                            <button data-tab="files" class="sidebar-item w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                                </svg>
+                                <span data-i18n="classroom.files">Arquivos</span>
+                            </button>
+                            <button data-tab="members" class="sidebar-item w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                </svg>
+                                <span data-i18n="classroom.participants">Participantes</span>
+                                <span id="member-count-sidebar" class="ml-auto text-gray-400 text-xs font-medium">0</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Outras Salas -->
+                    <ul id="classroom-list" class="space-y-1 pb-2" style="transition: opacity 0.2s ease;">
+                    </ul>
+
+                    <div id="conversations-divider" class="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+
+                    <!-- Conversas Section (Hidden for Teachers) -->
+                    <div id="conversations-section" class="flex items-center justify-between px-1">
+                        <p class="text-xs uppercase text-gray-500 font-bold tracking-wider" data-i18n="chat.conversations">Conversas</p>
+                        <button onclick="window.location.href='../estudante/'" class="text-xs text-blue-600 font-medium hover:text-blue-700 transition-colors flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <span data-i18n="chat.newConversation">Nova</span>
+                        </button>
+                    </div>
+                    <ul id="conversation-list" class="space-y-1 pb-4" style="transition: opacity 0.2s ease;"></ul>
+                </div>
+                
+                <!-- Collapsed Nav Icons -->
+                <div class="sidebar-collapsed-content pt-4 w-full flex flex-col items-center gap-3">
+
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                    </button>
+                    <a id="new-conversation-collapsed-btn" href="../estudante/" class="p-2 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Nova Conversa">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    </a>
+                </div>
+            </nav>
+
+            <!-- Sidebar Footer -->
+            <div class="border-t border-gray-200 dark:border-gray-700 p-2 shrink-0">
+                <div class="sidebar-expanded-content space-y-1 px-1">
+                    <a href="../quem-somos" data-i18n="navigation.about" class="w-full text-left text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 py-2 px-2 rounded flex items-center gap-2 transition-colors">Quem Somos</a>
+                    <button id="settings-btn" data-i18n="settings.title" class="w-full text-left text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 py-2 px-2 rounded flex items-center gap-2 transition-colors">Configura��es</button>
+                    <button id="logout-btn" data-i18n="navigation.logout" class="w-full text-left text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 py-2 px-2 rounded flex items-center gap-2 transition-colors">Sair</button>
+                </div>
+                <div class="sidebar-collapsed-content flex flex-col items-center gap-2 py-2">
+                    <button id="collapsed-settings" class="p-2 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Configura��es">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    </button>
+                    <button id="collapsed-logout" class="p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500" title="Sair">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="flex-1 flex flex-col min-h-0 overflow-hidden bg-white dark:bg-gray-900">
+            <!-- Chat Header -->
+            <header class="h-16 px-4 md:px-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-3">
+                    <!-- Mobile Sidebar Toggle -->
+                    <button id="mobile-sidebar-btn" class="md:hidden p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
+                    <a href="../estudante/" class="flex items-center text-xl font-bold text-gray-900 dark:text-gray-100" id="sala-header-logo">
+                        <img loading="lazy" src="../assets/logo/logo-icon-ligth.png" alt="AtenaAI" class="h-8 w-8 mr-2" data-theme-logo>
+                        AtenaAI
+                    </a>
+                    <span id="sala-header-badge" class="ml-2 px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">Estudante</span>
+                </div>
+                <div class="hidden md:block">
+                    <h2 id="class-name-header" class="text-lg font-bold text-gray-800 dark:text-gray-100">Matem�tica Avan�ada</h2>
+                    <p class="text-sm text-gray-400 flex items-center gap-2">
+                        <span class="flex items-center gap-1">
+                            <span id="connection-status" class="w-2 h-2 bg-gray-400 rounded-full" title="Conectando..."></span>
+                            <span id="connection-text">Conectando...</span>
+                        </span>
+                        <span>�</span>
+                        <span id="total-members">0 participantes</span>
+                    </p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <!-- Theme Toggle -->
+                    <button id="theme-toggle" class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300">
+                        <svg id="light-icon" class="w-5 h-5 hidden dark:block" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/>
+                        </svg>
+                        <svg id="dark-icon" class="w-5 h-5 block dark:hidden" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+                        </svg>
+                    </button>
+                    <!-- Bot�o Fechar Turma -->
+                    <button id="close-classroom-btn" class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300" title="Fechar Turma">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                    <button id="btn-search" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors" title="Buscar">
+                        <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </button>
+                    <button id="btn-pin" class="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors" title="Mensagens fixadas">
+                        <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Tab Content Container -->
+            <div id="tab-content-wrapper" class="flex-1 overflow-hidden min-h-0 flex flex-col bg-white dark:bg-gray-900">
+                <!-- Messages Container (Chat Tab) -->
+                <div id="messages-container" class="tab-panel active flex-1 overflow-y-auto min-h-0 p-4 md:p-6 space-y-4 bg-white dark:bg-gray-900" data-tab-panel="chat">
+                    <!-- Mensagens ser�o carregadas aqui dinamicamente -->
+
+                    <!-- Typing Indicator -->
+                <div id="typing-indicator" class="hidden flex items-center gap-3 px-4 py-2 text-sm text-gray-400">
+                    <div class="flex gap-1">
+                        <span class="w-2 h-2 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+                        <span class="w-2 h-2 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+                        <span class="w-2 h-2 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+                    </div>
+                    <span>AtenaAI est� digitando...</span>
+                </div>
+            </div>
+
+            <!-- Activities Panel -->
+            <div id="activities-container" class="tab-panel hidden flex-1 overflow-y-auto min-h-0 p-4 md:p-6 bg-white dark:bg-gray-900" data-tab-panel="activities">
+                <div class="max-w-4xl mx-auto">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">Atividades</h2>
+                        <p class="text-gray-500 dark:text-gray-400">Acompanhe as atividades e tarefas da turma</p>
+                    </div>
+                    
+                    <!-- Activity List -->
+                    <div id="activities-list" class="space-y-4">
+                        <!-- Atividades ser�o carregadas dinamicamente aqui -->
+                        <div class="flex items-center justify-center p-8 text-gray-400">
+                            <div class="text-center">
+                                <svg class="w-16 h-16 mx-auto mb-3 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                </svg>
+                                <p class="text-sm">Nenhuma atividade no momento</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Files Panel -->
+            <div id="files-container" class="tab-panel hidden flex-1 overflow-y-auto min-h-0 p-4 md:p-6 bg-white dark:bg-gray-900" data-tab-panel="files">
+                <div class="max-w-4xl mx-auto">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">Arquivos</h2>
+                        <p class="text-gray-500 dark:text-gray-400">Materiais e documentos compartilhados na turma</p>
+                    </div>
+                    
+                    <!-- File List -->
+                    <div id="files-list" class="space-y-3">
+                        <!-- Arquivos ser�o carregados dinamicamente aqui -->
+                        <div class="flex items-center justify-center p-8 text-gray-400">
+                            <div class="text-center">
+                                <svg class="w-16 h-16 mx-auto mb-3 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                </svg>
+                                <p class="text-sm">Nenhum arquivo compartilhado</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
+
+            <!-- Message Input Area -->
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0">
+                <form id="message-form" class="flex items-end gap-3">
+                    <!-- Attachment Button -->
+                    <button type="button" id="btn-attach" class="p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors flex-shrink-0" title="Anexar arquivo">
+                        <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                        </svg>
+                    </button>
+                    <!-- Text Input -->
+                    <div class="flex-1 relative">
+                        <textarea id="message-input" rows="1" class="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl resize-none text-gray-700 dark:text-gray-200 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all max-h-32" placeholder="Digite sua mensagem..." oninput="this.style.height = ''; this.style.height = Math.min(this.scrollHeight, 128) + 'px'"></textarea>
+                        <!-- Emoji Button Inside Input -->
+                        <button type="button" id="btn-emoji" class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <!-- Send Button -->
+                    <button type="submit" id="btn-send" class="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm flex-shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                        </svg>
+                    </button>
+                </form>
+                <!-- Quick Mention Suggestion -->
+                <div id="mention-suggestions" class="hidden mt-2 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                    <p class="text-xs text-gray-400 px-2 mb-1">Sugest�es</p>
+                    <button class="w-full flex items-center gap-2 px-3 py-2 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors text-left">
+                        <div class="w-6 h-6 rounded-full bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center">
+                            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                            </svg>
+                        </div>
+                        <span class="text-sm font-medium text-primary-600 dark:text-primary-400">@AtenaAI</span>
+                        <span class="text-xs text-gray-400">Assistente IA</span>
+                    </button>
+                </div>
+
+                <div class="text-center text-[10px] text-gray-400 py-1">� 2026 AtenaAI � Projeto educacional e experimental.</div>
+            </div>
+        </main>
+
+        <!-- Right Sidebar (Desktop only) - Hidden, members shown in popup -->
+        <aside id="sidebar-right" class="hidden w-72 bg-gray-50 dark:bg-gray-800/50 border-l border-gray-200 dark:border-gray-700 flex-col h-full overflow-hidden">
+            <!-- Class Statistics -->
+            <div class="p-5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                <h3 class="text-sm font-bold text-gray-800 dark:text-gray-100 mb-4" data-i18n="classroom.classInfo">Informa��es da Turma</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-gradient-to-br from-primary-50 to-purple-50 dark:from-primary-900/30 dark:to-purple-900/30 rounded-xl p-3">
+                        <div class="flex items-center gap-2 mb-1">
+                            <svg class="w-4 h-4 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
+                            <span class="text-xs text-gray-500 dark:text-gray-400" data-i18n="classroom.students">Alunos</span>
+                        </div>
+                        <p class="text-xl font-bold text-primary-600 dark:text-primary-400">28</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-xl p-3">
+                        <div class="flex items-center gap-2 mb-1">
+                            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                            </svg>
+                            <span class="text-xs text-gray-500 dark:text-gray-400" data-i18n="classroom.messages">Mensagens</span>
+                        </div>
+                        <p class="text-xl font-bold text-emerald-600 dark:text-emerald-400">1.2k</p>
+                    </div>
+                </div>
+                <!-- Teacher Info -->
+                <div class="mt-4 flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                    <div id="sidebar-teacher-avatar" class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-primary-600 flex items-center justify-center text-white font-bold text-sm">
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p id="teacher-name" class="text-sm font-semibold text-gray-700 dark:text-gray-200 truncate">Carregando...</p>
+                        <p class="text-xs text-gray-400" data-i18n="classroom.responsibleTeacher">Professor Respons�vel</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Members List -->
+            <div class="flex-1 overflow-hidden flex flex-col">
+                <div class="px-5 py-4 flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-gray-800 dark:text-gray-100" data-i18n="classroom.onlineMembers">Membros Online</h3>
+                    <span class="text-xs text-emerald-500 font-medium bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-full">12 online</span>
+                </div>
+                <div id="members-list" class="flex-1 overflow-y-auto px-5 pb-4 space-y-2">
+                    <!-- Membros ser�o carregados dinamicamente aqui -->
+                    <div class="flex items-center justify-center p-4 text-sm text-gray-400">
+                        Carregando participantes...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Files Section -->
+            <div class="p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-bold text-gray-800 dark:text-gray-100" data-i18n="classroom.recentFiles">Arquivos Recentes</h3>
+                    <button class="text-xs text-primary-500 font-medium hover:text-primary-600 transition-colors" data-i18n="classroom.viewAll">Ver todos</button>
+                </div>
+                <div id="recent-files-list" class="space-y-2">
+                    <!-- Arquivos ser�o carregados dinamicamente aqui -->
+                    <div class="flex items-center justify-center p-4 text-sm text-gray-400">
+                        Nenhum arquivo recente
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Participants Popup Modal -->
+    <div id="members-modal-overlay" class="fixed inset-0 bg-black/50 z-[70] opacity-0 pointer-events-none transition-opacity"></div>
+    <div id="members-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl z-[80] w-full max-w-md max-h-[80vh] hidden flex-col overflow-hidden">
+        <!-- Modal Header -->
+        <div class="p-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-white" data-i18n="classroom.participants">Participantes</h3>
+                    <p class="text-xs text-gray-500"><span id="members-modal-count">0</span> participantes</p>
+                </div>
+            </div>
+            <button id="members-modal-close" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Teacher Section -->
+        <div class="px-5 py-3 bg-gray-50 dark:bg-gray-900/50">
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2" data-i18n="classroom.teacher">Professor</p>
+            <div class="flex items-center gap-3 p-2 rounded-xl bg-white dark:bg-gray-800">
+                <div class="relative">
+                    <div id="modal-teacher-avatar" class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-primary-600 flex items-center justify-center text-white font-bold text-sm">
+                        </div>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p id="modal-teacher-name" class="text-sm font-semibold text-gray-700 dark:text-gray-200 truncate">Carregando...</p>
+                    <p class="text-xs text-blue-500 font-medium">Professor Respons�vel</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Students Section (Teacher Only) -->
+        <div id="pending-students-section" class="px-5 py-3 bg-amber-50 dark:bg-amber-900/10 border-t border-amber-200 dark:border-amber-800" style="display: none;">
+            <p class="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Solicita��es Pendentes
+            </p>
+            <div id="pending-students-list" class="space-y-2">
+                <!-- Pending students will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Students List -->
+        <div class="flex-1 overflow-y-auto px-5 py-3">
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2" data-i18n="classroom.students">Participantes</p>
+            <div id="members-modal-list" class="space-y-2">
+                <p class="text-sm text-gray-400 text-center py-4">Carregando...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Classroom Modal -->
+    <div id="classroom-modal-overlay" class="fixed inset-0 bg-black/50 z-[70] opacity-0 pointer-events-none transition-opacity"></div>
+    <div id="classroom-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-2xl z-[80] w-full max-w-sm hidden">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+            </div>
+            <div>
+                <h3 class="text-lg font-bold dark:text-white" data-i18n="classroom.joinTitle">Entrar em uma Sala</h3>
+                <p class="text-xs text-gray-500" data-i18n="classroom.joinSubtitle">Digite o c�digo da turma</p>
+            </div>
+        </div>
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" data-i18n="classroom.codeLabel">C�digo da Turma</label>
+            <input type="text" id="classroom-code-input" class="w-full p-3 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 uppercase tracking-wider text-center font-mono text-lg" placeholder="ABC123" maxlength="10" autocomplete="off">
+            <p class="text-xs text-gray-400 mt-2" data-i18n="classroom.codeHint">O c�digo foi fornecido pelo seu professor</p>
+        </div>
+        <div id="classroom-error" class="hidden mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400"></div>
+        <div class="flex gap-3">
+            <button id="classroom-cancel" class="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 font-medium transition-colors" data-i18n="settings.cancel">Cancelar</button>
+            <button id="classroom-join" class="flex-1 px-4 py-2.5 bg-blue-600 rounded-lg text-white hover:bg-blue-700 font-medium transition-colors flex items-center justify-center gap-2" data-i18n="classroom.joinButton">
+                <span>Entrar</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-4 right-4 z-[9999] hidden bg-white dark:bg-gray-800 shadow-xl rounded-lg p-4 border-l-4 border-blue-500 max-w-sm w-full animate-bounce-in">
+        <div class="flex gap-3">
+            <div id="toast-icon" class="text-2xl">??</div>
+            <div>
+                <p id="toast-title" class="font-bold text-gray-900 dark:text-white" data-i18n="toasts.defaultTitle">Aviso</p>
+                <p id="toast-message" class="text-sm text-gray-600 dark:text-gray-300" data-i18n="toasts.defaultMessage">Mensagem aqui</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal-overlay" class="settings-modal-overlay"></div>
+    <div id="settings-modal" class="settings-modal flex flex-col bg-white dark:bg-gray-800 h-full shadow-2xl">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center shrink-0">
+            <h2 class="text-xl font-bold text-gray-800 dark:text-white" data-i18n="settings.title">Configura��es</h2>
+            <div class="flex gap-2">
+                <button id="sync-settings" class="text-blue-500 hover:text-blue-700 p-1" title="Sincronizar"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
+                <button id="close-settings" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6">
+            <form id="settings-form" class="space-y-8">
+                <div class="space-y-4">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2" data-i18n="settings.profile">Perfil</h3>
+                    <div class="flex items-center gap-4">
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="w-20 h-20 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex items-center justify-center border-2 border-gray-300 dark:border-gray-600">
+                                <img loading="lazy" id="settings-preview" src="" alt="Preview" class="w-full h-full object-cover hidden">
+                                <span id="settings-initial" class="text-2xl font-bold text-gray-500">U</span>
+                            </div>
+                            <p class="text-xs text-gray-500" data-i18n="settings.preview">Preview</p>
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" data-i18n="settings.profilePicture">Foto de Perfil</label>
+                            <input type="file" id="settings-avatar" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-gray-300">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="space-y-4">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2" data-i18n="settings.personalInfo">Informa��es Pessoais</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-2"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" data-i18n="settings.fullName">Nome Completo</label><input type="text" id="setting-name" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white p-2 border"></div>
+                        <div><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" data-i18n="settings.nickname">Apelido</label><input type="text" id="setting-nickname" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white p-2 border"></div>
+                        <div><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" data-i18n="settings.birthDate">Data de Nascimento</label><input type="date" id="setting-birthdate" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white p-2 border"></div>
+                        <div class="md:col-span-2"><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" data-i18n="settings.emailEditable">Email (Edit�vel)</label><input type="email" id="setting-email" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white p-2 border"></div>
+                    </div>
+                </div>
+
+                <div class="pt-6 mt-6 border-t border-red-200 dark:border-red-900/30">
+                    <h3 class="text-lg font-medium text-red-600 mb-2" data-i18n="settings.dangerZone">Zona de Perigo</h3>
+                    <button type="button" id="delete-account-btn" data-i18n="settings.deleteAccountPermanent" class="w-full px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-md hover:bg-red-100 hover:border-red-300 transition-colors text-sm font-medium">Excluir minha conta permanentemente</button>
+                </div>
+            </form>
+        </div>
+        <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shrink-0">
+            <div class="flex gap-3">
+                <button id="cancel-settings" data-i18n="settings.cancel" class="flex-1 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium">Cancelar</button>
+                <button type="submit" form="settings-form" data-i18n="settings.save" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium shadow-sm">Salvar Altera��es</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script type="module" src="../js/core/auth.js"></script>
+    <script type="module" src="../js/ui/ui.js"></script>
+    <script type="module" src="../js/features/settings.js"></script>
+    <script>
+        
+        // Bot�o Fechar Turma
+        const closeClassroomBtn = document.getElementById('close-classroom-btn');
+        if (closeClassroomBtn) {
+            closeClassroomBtn.addEventListener('click', () => {
+                window.location.href = '../estudante/';
+            });
+        }
+
+        // Mobile Sidebar Toggle
+        const sidebarLeft = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+            sidebarOverlay.addEventListener('click', () => {
+                sidebarLeft.classList.remove('mobile-open');
+                sidebarOverlay.classList.remove('active');
+            });
+
+        // Classroom Toggle Functionality
+        function initClassroomToggles() {
+            document.querySelectorAll('.classroom-toggle-btn').forEach(btn => {
+                // Remove event listeners antigos
+                btn.replaceWith(btn.cloneNode(true));
+            });
+            
+            document.querySelectorAll('.classroom-toggle-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const header = this.closest('.classroom-header');
+                    const menu = header.nextElementSibling;
+                    const toggle = this.querySelector('.classroom-toggle');
+                    const isCurrent = this.dataset.current === 'true';
+                    const classroomId = isCurrent ? 'current' : header.dataset.classroomId;
+                    
+                    console.log('Toggle clicked!', classroomId, 'Current expanded:', menu?.classList.contains('expanded'));
+                    
+                    if (menu && toggle) {
+                        menu.classList.toggle('expanded');
+                        toggle.classList.toggle('expanded');
+                        
+                        // Salvar estado no localStorage
+                        const isExpanded = menu.classList.contains('expanded');
+                        console.log('New state:', isExpanded);
+                        const expandedClassrooms = JSON.parse(localStorage.getItem('expandedClassrooms') || '{}');
+                        expandedClassrooms[classroomId] = isExpanded;
+                        localStorage.setItem('expandedClassrooms', JSON.stringify(expandedClassrooms));
+                    } else {
+                        console.log('Menu ou toggle n�o encontrado!', menu, toggle);
+                    }
+                });
+            });
+        }
+
+        // Initialize toggles on load - aguardar DOM estar pronto
+        document.addEventListener('DOMContentLoaded', () => {
+            initClassroomToggles();
+            restoreClassroomStates();
+        });
+        
+        // Tamb�m executar imediatamente (caso DOM j� esteja pronto)
+        if (document.readyState === 'loading') {
+            // J� adicionamos o listener acima
+        } else {
+            // DOM j� carregado
+            initClassroomToggles();
+            restoreClassroomStates();
+        }
+        
+        // Restaurar estado das turmas expandidas ao carregar
+        function restoreClassroomStates() {
+            const expandedClassrooms = JSON.parse(localStorage.getItem('expandedClassrooms') || '{}');
+            
+            // Restaurar turma atual - se n�o tiver valor salvo, come�ar expandido (true)
+            const currentShouldExpand = expandedClassrooms.hasOwnProperty('current') 
+                ? expandedClassrooms['current'] 
+                : true; // Padr�o: expandido
+                
+            const currentBtn = document.querySelector('[data-current="true"]');
+            if (currentBtn) {
+                const header = currentBtn.closest('.classroom-header');
+                const menu = header.nextElementSibling;
+                const toggle = currentBtn.querySelector('.classroom-toggle');
+                
+                if (menu && toggle) {
+                    // S� aplicar o estado se ainda n�o foi inicializado
+                    if (!menu.dataset.initialized) {
+                        if (currentShouldExpand) {
+                            menu.classList.add('expanded');
+                            toggle.classList.add('expanded');
+                        } else {
+                            menu.classList.remove('expanded');
+                            toggle.classList.remove('expanded');
+                        }
+                        menu.dataset.initialized = 'true';
+                    }
+                }
+            }
+            
+            // Restaurar outras turmas
+            Object.keys(expandedClassrooms).forEach(classroomId => {
+                if (classroomId !== 'current' && expandedClassrooms[classroomId]) {
+                    const header = document.querySelector(`[data-classroom-id="${classroomId}"]`);
+                    if (header) {
+                        const menu = header.nextElementSibling;
+                        const btn = header.querySelector('.classroom-toggle-btn');
+                        const toggle = btn?.querySelector('.classroom-toggle');
+                        
+                        if (menu && toggle && !menu.dataset.initialized) {
+                            menu.classList.add('expanded');
+                            toggle.classList.add('expanded');
+                            menu.dataset.initialized = 'true';
+                        }
+                    }
+                }
+            });
+        }
+
+        // Collapsed buttons handlers
+        const collapsedSettings = document.getElementById('collapsed-settings');
+        const collapsedLogout = document.getElementById('collapsed-logout');
+        const settingsBtn = document.getElementById('settings-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        if (collapsedSettings && settingsBtn) {
+            collapsedSettings.addEventListener('click', () => settingsBtn.click());
+        }
+        if (collapsedLogout && logoutBtn) {
+            collapsedLogout.addEventListener('click', () => logoutBtn.click());
+        }
+
+        // Show teacher-only sections based on user role
+        function updateTeacherUI() {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const teacherActions = document.getElementById('teacher-actions');
+            if (teacherActions && (user.role === 'teacher' || user.role === 'professor' || user.role === 'admin')) {
+                teacherActions.classList.remove('hidden');
+            }
+        }
+        updateTeacherUI();
+
+        // Atualizar badge do header baseado no role do usu�rio
+        function updateHeaderTitle() {
+            const userStr = localStorage.getItem('user');
+            const headerBadge = document.getElementById('sala-header-badge');
+            
+            if (userStr && headerBadge) {
+                try {
+                    const userData = JSON.parse(userStr);
+                    if (userData.role === 'teacher' || userData.role === 'admin') {
+                        headerBadge.textContent = 'Professor';
+                    } else if (userData.role === 'student') {
+                        headerBadge.textContent = 'Estudante';
+                    }
+                } catch (e) {
+                    console.error('Erro ao atualizar badge:', e);
+                }
+            }
+        }
+        updateHeaderTitle();
+
+        // Tab Navigation
+        const navButtons = document.querySelectorAll('[data-tab]');
+        navButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetTab = button.dataset.tab;
+                
+                // Special handling for members tab - open modal instead
+                if (targetTab === 'members') {
+                    const membersModal = document.getElementById('members-modal');
+                    const membersModalOverlay = document.getElementById('members-modal-overlay');
+                    if (membersModal && membersModalOverlay) {
+                        membersModal.classList.remove('hidden');
+                        membersModal.classList.add('flex');
+                        membersModalOverlay.classList.remove('opacity-0', 'pointer-events-none');
+                        membersModalOverlay.classList.add('opacity-100');
+                    }
+                    return; // Don't update active state for members tab
+                }
+                
+                // Update active state for tab buttons
+                navButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.dataset.tab === targetTab) {
+                        btn.classList.add('active');
+                        // Update colors for collapsed icons
+                        if (btn.closest('.sidebar-collapsed-content')) {
+                            btn.classList.remove('text-gray-500');
+                            btn.classList.add('text-primary-600');
+                        }
+                    } else {
+                        if (btn.closest('.sidebar-collapsed-content')) {
+                            btn.classList.remove('text-primary-600');
+                            btn.classList.add('text-gray-500');
+                        }
+                    }
+                });
+                
+                // Show/hide tab panels
+                const tabPanels = document.querySelectorAll('.tab-panel');
+                tabPanels.forEach(panel => {
+                    const panelType = panel.dataset.tabPanel;
+                    if (panelType === targetTab) {
+                        panel.classList.add('active');
+                        panel.classList.remove('hidden');
+                    } else {
+                        panel.classList.remove('active');
+                        panel.classList.add('hidden');
+                    }
+                });
+            });
+        });
+
+        // Make sure chat tab is visible by default
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatPanel = document.querySelector('[data-tab-panel="chat"]');
+            if (chatPanel) {
+                chatPanel.classList.add('active');
+                chatPanel.classList.remove('hidden');
+            }
+        });
+
+        // Message Input Handling
+        const messageForm = document.getElementById('message-form');
+        const messageInput = document.getElementById('message-input');
+        const mentionSuggestions = document.getElementById('mention-suggestions');
+
+        // ?? CHAT EM GRUPO EM TEMPO REAL COM WEBSOCKET
+        let groupChatManager = null;
+        
+        // Pegar ID da sala da URL (reutilizar depois)
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentClassroomId = urlParams.get('id');
+        
+        if (currentClassroomId) {
+            // Importar e inicializar
+            import('../js/pages/group-chat.js').then(module => {
+                const GroupChatManager = module.default;
+                groupChatManager = new GroupChatManager(currentClassroomId);
+                
+                // Carregar mensagens anteriores
+                groupChatManager.loadPreviousMessages();
+                
+                // Conectar ao WebSocket
+                groupChatManager.connect();
+                
+                console.log('[Sala] Group chat manager initialized');
+            }).catch(err => {
+                console.error('[Sala] Error loading group chat:', err);
+            });
+        }
+        
+        // Desconectar ao sair da p�gina
+        window.addEventListener('beforeunload', () => {
+            if (groupChatManager) {
+                groupChatManager.disconnect();
+            }
+        });
+
+        // Mention Suggestion Click Handler
+        const mentionButton = mentionSuggestions?.querySelector('button');
+        if (mentionButton) {
+            mentionButton.addEventListener('click', () => {
+                const cursorPos = messageInput.selectionStart;
+                const textBefore = messageInput.value.substring(0, cursorPos);
+                const textAfter = messageInput.value.substring(cursorPos);
+
+                const lastAtIndex = textBefore.lastIndexOf('@');
+                if (lastAtIndex !== -1) {
+                    messageInput.value = textBefore.substring(0, lastAtIndex) + '@AtenaAI ' + textAfter;
+                } else {
+                    messageInput.value = textBefore + '@AtenaAI ' + textAfter;
+                }
+
+                mentionSuggestions.classList.add('hidden');
+                messageInput.focus();
+            });
+        }
+
+        // Scroll Messages to Bottom on Load
+        document.addEventListener('DOMContentLoaded', () => {
+            const messagesContainer = document.getElementById('messages-container');
+            if (messagesContainer) {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        });
+
+        // API URL detection
+        const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+        const API_URL = isLocal ? 'http://127.0.0.1:8000' : 'https://atenaai-api.onrender.com';
+
+        // currentClassroomId j� foi declarado acima (linha ~1450)
+
+        // Load user data from server and update UI
+        async function loadUserData() {
+            try {
+                const token = localStorage.getItem('access_token');
+                if (!token) return;
+
+                // First try from localStorage
+                let user = null;
+                try {
+                    user = JSON.parse(localStorage.getItem('user') || 'null');
+                } catch {}
+
+                // If not in localStorage, fetch from server
+                if (!user) {
+                    const response = await fetch(`${API_URL}/api/v1/auth/me`, {
+                        credentials: 'include'
+                    });
+                    if (response.ok) {
+                        user = await response.json();
+                        localStorage.setItem('user', JSON.stringify(user));
+                    }
+                }
+
+                if (user) {
+                    // Update user name
+                    const userName = document.getElementById('user-name');
+                    if (userName) userName.textContent = user.nickname || user.full_name || 'Usu�rio';
+
+                    // Update user role
+                    const userRole = document.getElementById('user-role');
+                    if (userRole) {
+                        const roleMap = { 'student': 'Estudante', 'teacher': 'Professor', 'admin': 'Admin' };
+                        userRole.textContent = roleMap[user.role] || user.role || 'Estudante';
+                    }
+
+                    // Update avatar
+                    const avatarImage = document.getElementById('avatar-image');
+                    const avatarInitial = document.getElementById('avatar-initial');
+                    const msgAvatarInitial = document.getElementById('msg-avatar-initial');
+                    
+                    if (avatarImage && avatarInitial) {
+                        if (user.profile_image) {
+                            avatarImage.src = user.profile_image;
+                            avatarImage.classList.remove('hidden');
+                            avatarInitial.classList.add('hidden');
+                        } else {
+                            const initial = (user.full_name || 'U')[0].toUpperCase();
+                            avatarInitial.textContent = initial;
+                            avatarImage.classList.add('hidden');
+                            avatarInitial.classList.remove('hidden');
+                            if (msgAvatarInitial) msgAvatarInitial.textContent = initial;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Error loading user data:', err);
+            }
+        }
+
+        // Load user conversations
+        async function loadConversations() {
+            try {
+                // Check user role and hide conversations section for teachers
+                const user = JSON.parse(localStorage.getItem('user') || 'null');
+                const isTeacher = user && (user.role === 'teacher' || user.role === 'admin');
+                
+                // Hide/show conversation elements based on role
+                const conversationsSection = document.getElementById('conversations-section');
+                const conversationsList = document.getElementById('conversation-list');
+                const conversationsDivider = document.getElementById('conversations-divider');
+                const newConversationCollapsedBtn = document.getElementById('new-conversation-collapsed-btn');
+                
+                if (isTeacher) {
+                    // Hide all conversation-related elements for teachers
+                    if (conversationsSection) conversationsSection.style.display = 'none';
+                    if (conversationsList) conversationsList.style.display = 'none';
+                    if (conversationsDivider) conversationsDivider.style.display = 'none';
+                    if (newConversationCollapsedBtn) newConversationCollapsedBtn.style.display = 'none';
+                    return; // Don't load conversations for teachers
+                }
+                
+                // Show elements for students
+                if (conversationsSection) conversationsSection.style.display = 'flex';
+                if (conversationsList) conversationsList.style.display = 'block';
+                if (conversationsDivider) conversationsDivider.style.display = 'block';
+                if (newConversationCollapsedBtn) newConversationCollapsedBtn.style.display = 'block';
+                
+                const token = localStorage.getItem('access_token');
+                if (!token) return;
+
+                const conversationList = document.getElementById('conversation-list');
+                if (!conversationList) return;
+
+                const response = await fetch(`${API_URL}/api/v1/conversations/`, {
+                    headers: { 'Authorization': `Bearer ${token}`, 'Cache-Control': 'no-cache' },
+                    cache: 'no-store'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const conversations = Array.isArray(data) ? data : (data.items || []);
+                    
+                    // Atualiza��o suave sem flash
+                    const newHTML = conversations.length > 0 
+                        ? conversations.slice(0, 5).map(c => `
+                            <li>
+                                <a href="../estudante/?c=${c.id}" class="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">${c.title || 'Conversa'}</p>
+                                        <p class="text-xs text-gray-500">${new Date(c.updated_at || c.created_at).toLocaleDateString('pt-BR')}</p>
+                                    </div>
+                                </a>
+                            </li>
+                        `).join('')
+                        : '';
+                    
+                    if (conversationList.innerHTML !== newHTML) {
+                        conversationList.style.opacity = '0.5';
+                        setTimeout(() => {
+                            conversationList.innerHTML = newHTML;
+                            conversationList.style.opacity = '1';
+                        }, 100);
+                    }
+                }
+            } catch (err) {
+                console.error('Error loading conversations:', err);
+            }
+        }
+
+        // Load classrooms and populate sidebar
+        async function loadClassroomData() {
+            try {
+                const token = localStorage.getItem('access_token');
+                const userStr = localStorage.getItem('user');
+                const user = userStr ? JSON.parse(userStr) : null;
+                
+                if (!token) {
+                    window.location.href = '../login';
+                    return;
+                }
+
+                // ?? FIX: Usar endpoint correto baseado no role
+                const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
+                const endpoint = isTeacher 
+                    ? `${API_URL}/api/v1/classrooms`  // Professor: lista suas salas
+                    : `${API_URL}/api/v1/classrooms/my`;  // Aluno: lista salas que participa
+
+                console.log(`[Sala] Buscando classrooms como ${user?.role} no endpoint: ${endpoint}`);
+
+                const response = await fetch(endpoint, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.status === 401) {
+                    localStorage.clear();
+                    window.location.href = '../login';
+                    return;
+                }
+
+                if (!response.ok) {
+                    console.error('Failed to load classrooms');
+                    return;
+                }
+
+                const classrooms = await response.json();
+                console.log(`[Sala] Encontradas ${classrooms.length} sala(s)`, classrooms);
+                
+                // Find current classroom
+                const currentClassroom = classrooms.find(c => c.id == currentClassroomId);
+                
+                // Se a turma n�o foi encontrada (aluno removido ou sem acesso)
+                if (!currentClassroom) {
+                    console.warn('[Sala] Turma n�o encontrada. Usu�rio pode ter sido removido ou n�o tem acesso.');
+                    
+                    // Determinar p�gina de destino baseada no role
+                    const redirectPath = isTeacher ? '/professor/' : '/estudante/';
+                    const message = isTeacher 
+                        ? 'Esta sala n�o foi encontrada ou foi exclu�da'
+                        : 'Voc� foi removido desta turma pelo professor';
+                    
+                    setTimeout(() => {
+                        showToast({ 
+                            title: 'Acesso negado', 
+                            message: message, 
+                            type: 'error',
+                            duration: 3000
+                        });
+                    }, 500);
+                    
+                    // Redirecionar ap�s 3 segundos para a p�gina correta
+                    setTimeout(() => {
+                        window.location.href = `..${redirectPath}`;
+                    }, 3000);
+                    return; // Parar aqui
+                }
+                
+                // ?? FIX: Verificar se aluno est� pendente
+                if (!isTeacher && currentClassroom.status === 'pending') {
+                    console.warn('[Sala] Aluno est� aguardando aprova��o nesta turma');
+                    
+                    setTimeout(() => {
+                        showToast({ 
+                            title: 'Aguardando aprova��o', 
+                            message: 'Seu acesso a esta turma ainda n�o foi aprovado pelo professor', 
+                            type: 'warning',
+                            duration: 4000
+                        });
+                    }, 500);
+                    
+                    // Redirecionar ap�s 4 segundos
+                    setTimeout(() => {
+                        window.location.href = '../estudante/';
+                    }, 4000);
+                    return; // Parar aqui
+                }
+                
+                // Update sidebar current classroom info
+                if (currentClassroom) {
+                    const sidebarName = document.getElementById('sidebar-classroom-name');
+                    const sidebarTeacher = document.getElementById('sidebar-teacher-name');
+                    const classroomInitials = document.getElementById('classroom-initials');
+                    const memberCount = document.getElementById('member-count-sidebar');
+                    const classNameHeader = document.getElementById('class-name-header');
+                    
+                    const teacherName = currentClassroom.teacher?.full_name || 'Professor';
+                    const totalParticipants = (currentClassroom.students?.length || 0) + 1; // +1 for teacher
+                    
+                    if (sidebarName) sidebarName.textContent = currentClassroom.name;
+                    if (sidebarTeacher) sidebarTeacher.textContent = `Prof: ${teacherName}`;
+                    if (classroomInitials) classroomInitials.textContent = currentClassroom.name.substring(0, 2).toUpperCase();
+                    if (memberCount) memberCount.textContent = totalParticipants;
+                    if (classNameHeader) classNameHeader.textContent = currentClassroom.name;
+                    
+                    // Also update main content header
+                    const mainClassroomName = document.getElementById('classroom-name');
+                    const mainClassroomDesc = document.getElementById('classroom-description');
+                    if (mainClassroomName) mainClassroomName.textContent = currentClassroom.name;
+                    if (mainClassroomDesc) mainClassroomDesc.textContent = currentClassroom.description || 'Descri��o da sala';
+                    
+                    // Update members info in header
+                    const totalMembers = document.getElementById('total-members');
+                    if (totalMembers) totalMembers.textContent = `${totalParticipants} participante${totalParticipants !== 1 ? 's' : ''}`;
+                    
+                    // Update members modal preview
+                    const modalTeacherName = document.getElementById('modal-teacher-name');
+                    const modalTeacherAvatar = document.getElementById('modal-teacher-avatar');
+                    const membersModalCount = document.getElementById('members-modal-count');
+                    
+                    const teacherInitials = teacherName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                    
+                    if (modalTeacherName) modalTeacherName.textContent = teacherName;
+                    if (modalTeacherAvatar) modalTeacherAvatar.textContent = teacherInitials;
+                    if (membersModalCount) membersModalCount.textContent = totalParticipants;
+                }
+
+                // Populate other classrooms list
+                const classroomList = document.getElementById('classroom-list');
+                if (classroomList) {
+                    const otherClassrooms = classrooms.filter(c => c.id != currentClassroomId);
+                    
+                    const newHTML = otherClassrooms.length > 0 
+                        ? otherClassrooms.map(c => {
+                            const teacherName = c.teacher?.full_name || 'Professor';
+                            return `
+                            <li class="classroom-item">
+                                <div class="classroom-header flex items-center gap-2 px-2 py-2 rounded-lg group/header" data-classroom-id="${c.id}">
+                                    <button class="classroom-toggle-btn p-0.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded" data-classroom-id="${c.id}">
+                                        <svg class="classroom-toggle w-3 h-3 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                        </svg>
+                                    </button>
+                                    <a href="../sala/?id=${c.id}" class="flex items-center gap-2 flex-1 min-w-0">
+                                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                            ${c.name.substring(0, 2).toUpperCase()}
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">${c.name}</p>
+                                            <p class="text-xs text-gray-400 truncate">Prof: ${teacherName}</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="classroom-menu pl-9 pr-2 pb-1">
+                                    <a href="../sala/?id=${c.id}" class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 text-sm transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                                        </svg>
+                                        <span>Chat</span>
+                                    </a>
+                                    <a href="../sala/?id=${c.id}&tab=activities" class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 text-sm transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                                        </svg>
+                                        <span>Atividades</span>
+                                    </a>
+                                    <a href="../sala/?id=${c.id}&tab=files" class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 text-sm transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                                        </svg>
+                                        <span>Arquivos</span>
+                                    </a>
+                                    <a href="../sala/?id=${c.id}&tab=members" class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 text-sm transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                        </svg>
+                                        <span>Membros</span>
+                                    </a>
+                                </div>
+                            </li>
+                        `;
+                        }).join('')
+                        : '';
+                    
+                    // Atualiza��o suave sem flash
+                    if (classroomList.innerHTML !== newHTML) {
+                        classroomList.style.opacity = '0.5';
+                        setTimeout(() => {
+                            classroomList.innerHTML = newHTML;
+                            classroomList.style.opacity = '1';
+                            // Re-initialize toggles for new classrooms only
+                            initClassroomToggles();
+                            // Restaurar estados apenas das NOVAS turmas (n�o da atual)
+                            const expandedClassrooms = JSON.parse(localStorage.getItem('expandedClassrooms') || '{}');
+                            Object.keys(expandedClassrooms).forEach(classroomId => {
+                                if (classroomId !== 'current' && expandedClassrooms[classroomId]) {
+                                    const header = document.querySelector(`[data-classroom-id="${classroomId}"]`);
+                                    if (header) {
+                                        const menu = header.nextElementSibling;
+                                        const btn = header.querySelector('.classroom-toggle-btn');
+                                        const toggle = btn?.querySelector('.classroom-toggle');
+                                        
+                                        if (menu && toggle && !menu.dataset.initialized) {
+                                            menu.classList.add('expanded');
+                                            toggle.classList.add('expanded');
+                                            menu.dataset.initialized = 'true';
+                                        }
+                                    }
+                                }
+                            });
+                        }, 100);
+                    }
+                }
+
+            } catch (err) {
+                console.error('Error loading classroom data:', err);
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadUserData();
+            loadClassroomData();
+            loadConversations();
+        });
+
+        // Create Activity Button Handler
+        const createActivityBtn = document.getElementById('btn-create-activity');
+        if (createActivityBtn) {
+            createActivityBtn.addEventListener('click', () => {
+                const toast = document.createElement('div');
+                toast.className = 'fixed bottom-4 right-4 bg-gray-800 dark:bg-gray-700 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 z-50';
+                toast.innerHTML = `
+                    <svg class="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>Funcionalidade em desenvolvimento</span>
+                `;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+            });
+        }
+
+        // Classroom Modal Logic
+        (function() {
+            const addBtn = document.getElementById('add-classroom-btn');
+            const modal = document.getElementById('classroom-modal');
+            const modalOverlay = document.getElementById('classroom-modal-overlay');
+            const codeInput = document.getElementById('classroom-code-input');
+            const cancelBtn = document.getElementById('classroom-cancel');
+            const joinBtn = document.getElementById('classroom-join');
+            const errorDiv = document.getElementById('classroom-error');
+
+            function openModal() {
+                modal.classList.remove('hidden');
+                modalOverlay.classList.remove('opacity-0', 'pointer-events-none');
+                modalOverlay.classList.add('opacity-100');
+                codeInput.value = '';
+                errorDiv.classList.add('hidden');
+                setTimeout(() => codeInput.focus(), 100);
+            }
+
+            function closeModal() {
+                modal.classList.add('hidden');
+                modalOverlay.classList.add('opacity-0', 'pointer-events-none');
+                modalOverlay.classList.remove('opacity-100');
+            }
+
+            function showError(msg) {
+                errorDiv.textContent = msg;
+                errorDiv.classList.remove('hidden');
+            }
+
+            async function joinClassroom() {
+                const code = codeInput.value.trim().toUpperCase();
+                if (!code) {
+                    showError('Digite o c�digo da turma');
+                    return;
+                }
+
+                joinBtn.disabled = true;
+                joinBtn.innerHTML = '<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>';
+
+                try {
+                    const token = localStorage.getItem('access_token');
+                    
+                    const response = await fetch(`${API_URL}/api/v1/classrooms/join`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ code: code })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.detail || 'C�digo inv�lido ou turma n�o encontrada');
+                    }
+
+                    closeModal();
+                    // Redirect to the new classroom
+                    window.location.href = `../sala/?id=${data.id}`;
+                } catch (err) {
+                    showError(err.message);
+                } finally {
+                    joinBtn.disabled = false;
+                    joinBtn.innerHTML = '<span>Entrar</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>';
+                }
+            }
+
+            addBtn?.addEventListener('click', openModal);
+            modalOverlay?.addEventListener('click', closeModal);
+            cancelBtn?.addEventListener('click', closeModal);
+            joinBtn?.addEventListener('click', joinClassroom);
+            codeInput?.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') joinClassroom();
+            });
+            codeInput?.addEventListener('input', (e) => {
+                e.target.value = e.target.value.toUpperCase();
+            });
+        })();
+
+        // Logout handler
+        function logout() {
+            localStorage.clear();
+            window.location.href = '../login/';
+        }
+
+        document.getElementById('logout-btn')?.addEventListener('click', logout);
+        document.getElementById('collapsed-logout')?.addEventListener('click', logout);
+
+        // Settings handler - open settings modal
+        document.getElementById('settings-btn')?.addEventListener('click', () => {
+            const modal = document.getElementById('settings-modal');
+            const overlay = document.getElementById('settings-modal-overlay');
+            if (modal && overlay) {
+                modal.classList.add('active');
+                overlay.classList.add('active');
+            }
+        });
+        document.getElementById('collapsed-settings')?.addEventListener('click', () => {
+            const modal = document.getElementById('settings-modal');
+            const overlay = document.getElementById('settings-modal-overlay');
+            if (modal && overlay) {
+                modal.classList.add('active');
+                overlay.classList.add('active');
+            }
+        });
+
+        // Members Modal Logic
+        (function() {
+            const membersModal = document.getElementById('members-modal');
+            const membersModalOverlay = document.getElementById('members-modal-overlay');
+            const membersModalClose = document.getElementById('members-modal-close');
+            const memberButtons = document.querySelectorAll('[data-tab="members"]');
+
+            function openMembersModal() {
+                loadParticipants(); // Load participants when modal opens
+                membersModal.classList.remove('hidden');
+                membersModal.classList.add('flex');
+                membersModalOverlay.classList.remove('opacity-0', 'pointer-events-none');
+                membersModalOverlay.classList.add('opacity-100');
+            }
+
+            function closeMembersModal() {
+                membersModal.classList.add('hidden');
+                membersModal.classList.remove('flex');
+                membersModalOverlay.classList.add('opacity-0', 'pointer-events-none');
+                membersModalOverlay.classList.remove('opacity-100');
+            }
+
+            // Open modal when clicking members button
+            memberButtons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    openMembersModal();
+                });
+            });
+
+            // Close modal
+            membersModalClose?.addEventListener('click', closeMembersModal);
+            membersModalOverlay?.addEventListener('click', closeMembersModal);
+
+            // Close on Escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !membersModal.classList.contains('hidden')) {
+                    closeMembersModal();
+                }
+            });
+        })();
+
+        // Load Participants Function
+        async function loadParticipants() {
+            try {
+                const token = localStorage.getItem('access_token');
+                const userStr = localStorage.getItem('user');
+                const user = userStr ? JSON.parse(userStr) : null;
+                // Usar currentClassroomId da vari�vel global j� declarada
+                
+                if (!token || !currentClassroomId) return;
+
+                const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
+                const endpoint = isTeacher 
+                    ? `${API_URL}/api/v1/classrooms`
+                    : `${API_URL}/api/v1/classrooms/my`;
+
+                console.log('[loadParticipants] Fetching from:', endpoint);
+
+                const response = await fetch(endpoint, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    console.error('[loadParticipants] Failed to fetch:', response.status);
+                    return;
+                }
+
+                const classrooms = await response.json();
+                const currentClassroom = classrooms.find(c => c.id == currentClassroomId);
+                
+                console.log('[loadParticipants] Current classroom:', currentClassroom);
+                
+                if (!currentClassroom) {
+                    console.warn('[loadParticipants] Classroom not found');
+                    return;
+                }
+
+                // Get color for avatar
+                function getAvatarColor(index) {
+                    const colors = [
+                        'from-amber-400 to-orange-500',
+                        'from-emerald-400 to-teal-500',
+                        'from-blue-400 to-indigo-500',
+                        'from-purple-400 to-pink-500',
+                        'from-red-400 to-rose-500',
+                        'from-green-400 to-emerald-500',
+                        'from-cyan-400 to-blue-500',
+                        'from-violet-400 to-purple-500'
+                    ];
+                    return colors[index % colors.length];
+                }
+
+                // Get initials
+                function getInitials(name) {
+                    const parts = name.split(' ');
+                    if (parts.length >= 2) {
+                        return (parts[0][0] + parts[1][0]).toUpperCase();
+                    }
+                    return name.substring(0, 2).toUpperCase();
+                }
+
+                // Update teacher info
+                const teacherAvatar = document.getElementById('modal-teacher-avatar');
+                const teacherName = document.getElementById('modal-teacher-name');
+                if (currentClassroom.teacher) {
+                    const initials = getInitials(currentClassroom.teacher.full_name || 'Professor');
+                    if (teacherAvatar) teacherAvatar.textContent = initials;
+                    if (teacherName) teacherName.textContent = currentClassroom.teacher.full_name || 'Professor';
+                }
+
+                // Update member count
+                const totalParticipants = (currentClassroom.students?.length || 0) + 1; // +1 for teacher
+                const memberCountSidebar = document.getElementById('member-count-sidebar');
+                const membersModalCount = document.getElementById('members-modal-count');
+                const totalMembers = document.getElementById('total-members');
+                
+                if (memberCountSidebar) memberCountSidebar.textContent = totalParticipants;
+                if (membersModalCount) membersModalCount.textContent = totalParticipants;
+                if (totalMembers) totalMembers.textContent = `${totalParticipants} participante${totalParticipants !== 1 ? 's' : ''}`;
+
+                // Show/hide pending section and populate it (teacher only)
+                const pendingSection = document.getElementById('pending-students-section');
+                const pendingStudentsList = document.getElementById('pending-students-list');
+                
+                if (isTeacher && currentClassroom.pending_students?.length > 0) {
+                    if (pendingSection) pendingSection.style.display = 'block';
+                    
+                    if (pendingStudentsList) {
+                        pendingStudentsList.innerHTML = currentClassroom.pending_students.map((student, index) => {
+                            const initials = getInitials(student.full_name || student.email);
+                            const color = getAvatarColor(index);
+                            return `
+                                <div class=\"flex items-center gap-3 p-2 rounded-xl bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-800\">
+                                    <div class=\"w-9 h-9 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-xs\">
+                                        ${initials}
+                                    </div>
+                                    <div class=\"flex-1 min-w-0\">
+                                        <p class=\"text-sm font-medium text-gray-700 dark:text-gray-200 truncate\">${student.full_name || student.email}</p>
+                                        <p class=\"text-xs text-gray-400\">Aguardando aprova\u00e7\u00e3o</p>
+                                    </div>
+                                    <div class=\"flex gap-1\">
+                                        <button onclick=\"approveStudent(${student.id})\" class=\"p-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors\" title=\"Aprovar\">
+                                            <svg class=\"w-4 h-4\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">
+                                                <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M5 13l4 4L19 7\"></path>
+                                            </svg>
+                                        </button>
+                                        <button onclick=\"rejectStudent(${student.id})\" class=\"p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors\" title=\"Rejeitar\">
+                                            <svg class=\"w-4 h-4\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">
+                                                <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+                } else {
+                    if (pendingSection) pendingSection.style.display = 'none';
+                }
+
+                // Populate students list
+                const membersModalList = document.getElementById('members-modal-list');
+                if (membersModalList) {
+                    console.log('[loadParticipants] Students count:', currentClassroom.students?.length || 0);
+                    console.log('[loadParticipants] Students:', currentClassroom.students);
+                    
+                    if (currentClassroom.students?.length > 0) {
+                        membersModalList.innerHTML = currentClassroom.students.map((student, index) => {
+                            const initials = getInitials(student.full_name || student.email);
+                            const color = getAvatarColor(index);
+                            const removeButton = isTeacher ? `
+                                <button onclick=\"removeStudent(${student.id})\" class=\"p-1.5 hover:bg-red-500 hover:text-white text-red-500 rounded-lg transition-colors\" title=\"Remover aluno\">
+                                    <svg class=\"w-4 h-4\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">
+                                        <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16\"></path>
+                                    </svg>
+                                </button>
+                            ` : '';
+                            return `
+                                <div class=\"flex items-center gap-3 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors\">
+                                    <div class=\"w-9 h-9 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-xs\">
+                                        ${initials}
+                                    </div>
+                                    <div class=\"flex-1 min-w-0\">
+                                        <p class=\"text-sm font-medium text-gray-700 dark:text-gray-200 truncate\">${student.full_name || student.email}</p>
+                                        <p class=\"text-xs text-gray-400\">${student.email || ''}</p>
+                                    </div>
+                                    ${removeButton}
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        membersModalList.innerHTML = '<p class=\"text-sm text-gray-400 text-center py-4\">Nenhum participante ainda</p>';
+                    }
+                }
+            } catch (err) {
+                console.error('Error loading participants:', err);
+            }
+        }
+
+        // Approve student function
+        async function approveStudent(studentId) {
+            try {
+                const token = localStorage.getItem('access_token');
+                // Usar currentClassroomId da vari�vel global j� declarada
+                
+                if (!token || !currentClassroomId) return;
+
+                const response = await fetch(`${API_URL}/api/v1/classrooms/${currentClassroomId}/students/${studentId}/approve`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    showToast({ 
+                        title: 'Sucesso', 
+                        message: 'Aluno aprovado com sucesso!', 
+                        type: 'success' 
+                    });
+                    loadParticipants(); // Reload participants
+                    loadClassroomData(); // Reload sidebar data
+                } else {
+                    throw new Error('Failed to approve student');
+                }
+            } catch (err) {
+                console.error('Error approving student:', err);
+                showToast({ 
+                    title: 'Erro', 
+                    message: 'Erro ao aprovar aluno', 
+                    type: 'error' 
+                });
+            }
+        }
+
+        // Reject student function
+        async function rejectStudent(studentId) {
+            try {
+                const token = localStorage.getItem('access_token');
+                // Usar currentClassroomId da vari�vel global j� declarada
+                
+                if (!token || !currentClassroomId) return;
+
+                const response = await fetch(`${API_URL}/api/v1/classrooms/${currentClassroomId}/students/${studentId}/reject`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    showToast({ 
+                        title: 'Rejeitado', 
+                        message: 'Solicita��o rejeitada', 
+                        type: 'info' 
+                    });
+                    loadParticipants(); // Reload participants
+                    loadClassroomData(); // Reload sidebar data
+                } else {
+                    throw new Error('Failed to reject student');
+                }
+            } catch (err) {
+                console.error('Error rejecting student:', err);
+                showToast({ 
+                    title: 'Erro', 
+                    message: 'Erro ao rejeitar solicita��o', 
+                    type: 'error' 
+                });
+            }
+        }
+
+        // Remove student function
+        async function removeStudent(studentId) {
+            if (!confirm('Tem certeza que deseja remover este aluno da turma?')) return;
+            
+            try {
+                const token = localStorage.getItem('access_token');
+                // Usar currentClassroomId da vari�vel global j� declarada
+                
+                if (!token || !currentClassroomId) return;
+
+                const response = await fetch(`${API_URL}/api/v1/classrooms/${currentClassroomId}/students/${studentId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    showToast({ 
+                        title: 'Removido', 
+                        message: 'Aluno removido da turma', 
+                        type: 'success' 
+                    });
+                    loadParticipants(); // Reload participants
+                    loadClassroomData(); // Reload sidebar data
+                } else {
+                    throw new Error('Failed to remove student');
+                }
+            } catch (err) {
+                console.error('Error removing student:', err);
+                showToast({ 
+                    title: 'Erro', 
+                    message: 'Erro ao remover aluno', 
+                    type: 'error' 
+                });
+            }
+        }
+
+        // Emoji button handler
+        (function() {
+            const emojiBtn = document.getElementById('btn-emoji');
+            if (emojiBtn) {
+                emojiBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Lista de emojis comuns para estudos
+                    const emojis = ['??', '??', '??', '??', '??', '??', '??', '?', '??', '??', '??', '??', '??', '??', '?', '?', '?', '??', '??', '??'];
+                    const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+                    const textarea = document.getElementById('message-input');
+                    if (textarea) {
+                        const start = textarea.selectionStart;
+                        const end = textarea.selectionEnd;
+                        const text = textarea.value;
+                        textarea.value = text.substring(0, start) + emoji + text.substring(end);
+                        textarea.focus();
+                        textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
+                    }
+                });
+            }
+
+            // Attach file button handler
+            const attachBtn = document.getElementById('btn-attach');
+            if (attachBtn) {
+                attachBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    alert('A fun��o de anexar arquivos estar� dispon�vel em breve!');
+                });
+            }
+        })();
+    </script>
+    <script type="module">
+        // Inicializar servi�o de notifica��es
+        import { initNotifications } from '../js/services/notifications.js';
+        initNotifications();
+    </script>
+</body>
+</html>

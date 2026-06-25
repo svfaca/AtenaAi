@@ -4,18 +4,38 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth/AuthContext';
 import { useThemeMode } from '@/lib/hooks/useThemeMode';
+import { AboutModal } from '@/components/about/AboutModal';
 
 export function PublicHeader() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const { openLogin, openSignup } = useAuth();
   const { theme, toggleTheme } = useThemeMode();
 
-  return (
-    <header className="h-16 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 shrink-0 bg-white dark:bg-gray-900 z-10">
-      <div className="flex items-center gap-3">
-        <Link href="/" className="flex items-center text-xl font-bold hover:opacity-80 transition-opacity">
+  const handleBrandClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (aboutOpen) {
+      event.preventDefault();
+      setAboutOpen(false);
+    }
+  };
 
-            <button
+  const handleAboutToggle = () => {
+    setAboutOpen((prev) => !prev);
+  };
+
+  return (
+    <header className="relative z-[200] h-16 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 shrink-0 bg-white dark:bg-gray-900">
+      <div className="flex items-center gap-3">
+        <Link href="/" onClick={handleBrandClick} className="flex items-center text-xl font-bold hover:opacity-80 transition-opacity">
+          <img
+            src={theme === 'dark' ? '/logo/logo-icon-dark.png' : '/logo/logo-icon-ligth.png'}
+            alt="AtenaAI"
+            className="h-8 w-8 mr-2"
+          />
+          <span>AtenaAI</span>
+        </Link>
+      </div>
+
       <div className="flex items-center gap-2">
         <button
           onClick={toggleTheme}
@@ -35,6 +55,13 @@ export function PublicHeader() {
         </button>
 
         <div className="hidden md:flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleAboutToggle}
+            className="text-sm font-medium hover:underline px-2 text-gray-700 dark:text-gray-300"
+          >
+            {aboutOpen ? 'Voltar' : 'Quem somos'}
+          </button>
           <div className="flex items-center gap-2">
             <button
               onClick={openLogin}
@@ -65,13 +92,16 @@ export function PublicHeader() {
       {isMobileMenuOpen && (
         <div className="absolute top-16 left-0 w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 z-50 p-4 shadow-lg md:hidden">
           <div className="flex flex-col gap-3">
-            <Link
-              href="/about"
-              className="text-sm font-medium py-2 border-b border-gray-100 dark:border-gray-800 text-gray-700 dark:text-gray-300"
-              onClick={() => setIsMobileMenuOpen(false)}
+            <button
+              type="button"
+              className="text-left text-sm font-medium py-2 border-b border-gray-100 dark:border-gray-800 text-gray-700 dark:text-gray-300"
+              onClick={() => {
+                setAboutOpen((prev) => !prev);
+                setIsMobileMenuOpen(false);
+              }}
             >
-              Quem somos
-            </Link>
+              {aboutOpen ? 'Voltar' : 'Quem somos'}
+            </button>
             <button
               onClick={() => {
                 openLogin();
@@ -93,6 +123,8 @@ export function PublicHeader() {
           </div>
         </div>
       )}
+
+      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
     </header>
   );
 }
