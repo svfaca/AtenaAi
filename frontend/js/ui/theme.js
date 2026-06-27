@@ -59,7 +59,7 @@ export class ThemeManager {
    */
   updateThemeAssets() {
     const isDark = this.getTheme() === 'dark';
-    const fileName = isDark ? 'logo-icon-dark.png' : 'logo-icon-ligth.png';
+    const fileName = isDark ? 'logo-icon-dark-20260627.png' : 'logo-icon-ligth-20260627.png';
     
     document.querySelectorAll('[data-theme-logo]').forEach(img => {
       const basePath = img.src.substring(0, img.src.lastIndexOf('/') + 1);

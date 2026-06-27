@@ -30,7 +30,7 @@ export default function PublicHeader() {
       <div className="flex items-center gap-3">
         <Link href="/" onClick={handleBrandClick} className="flex items-center text-xl font-bold">
           <Image
-            src={isDark ? '/logo/logo-icon-dark.png' : '/logo/logo-icon-ligth.png'}
+            src={isDark ? '/logo/logo-icon-dark-20260627.png' : '/logo/logo-icon-ligth-20260627.png'}
             alt="AtenaAI"
             width={32}
             height={32}

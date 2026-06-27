@@ -46,7 +46,15 @@ ALLOWED_MIME_TYPES = {
 }
 
 # Extensões permitidas
-ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
+ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".jfif", ".webp"}
+
+MEDIA_TYPE_BY_EXTENSION = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".jfif": "image/jpeg",
+    ".webp": "image/webp",
+}
 
 # Tamanho máximo: 2MB
 MAX_FILE_SIZE = 2 * 1024 * 1024  # 2MB em bytes
@@ -236,7 +244,7 @@ def get_avatar(filename: str):
         # Retornar arquivo
         return FileResponse(
             path=file_path,
-            media_type=f"image/{ext[1:]}",  # Remove o ponto da extensão
+            media_type=MEDIA_TYPE_BY_EXTENSION.get(ext, "application/octet-stream"),
             headers={
                 "Cache-Control": "public, max-age=86400"  # Cache de 1 dia
             }

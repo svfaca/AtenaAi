@@ -55,7 +55,7 @@ export default function StudentArea({ userName, userAvatar, children }: StudentA
     }
   }, [isClassroomOpen, isMobileSidebarOpen]);
 
-  const logoPath = theme === 'dark' ? '/logo/logo-icon-dark.png' : '/logo/logo-icon-ligth.png';
+  const logoPath = theme === 'dark' ? '/logo/logo-icon-dark-20260627.png' : '/logo/logo-icon-ligth-20260627.png';
 
   return (
     <AppShell

@@ -12,12 +12,11 @@ from app.core.logger import logger
 # DATABASE URL
 # =====================================================
 
-# Base path for a stable SQLite location
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    f"sqlite:///{os.path.join(BASE_DIR, 'database.db')}"
+# Base path aligned with app.core.config and Alembic (backend/)
+BASE_DIR = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 )
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'database.db')}")
 
 # Corrige prefixo postgres antigo (Railway)
 if DATABASE_URL.startswith("postgres://"):

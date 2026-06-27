@@ -21,6 +21,8 @@ from app.core.exceptions import (
     generic_exception_handler
 )
 from app.database.database import Base, engine
+from app.database.data_migrations import apply_pending_data_migrations
+from app.database.database import SessionLocal
 
 # =====================================================
 # SETUP LOGGING
@@ -156,3 +158,11 @@ async def startup_event():
     logger.info(f"CORS Origins: {CORS_ORIGINS}")
     logger.info(f"Database: {os.getenv('DATABASE_URL', 'sqlite:///./database.db')}")
     logger.info("=" * 80)
+
+    db = SessionLocal()
+    try:
+        executed = apply_pending_data_migrations(db)
+        if executed:
+            logger.info(f"✅ Data migrations aplicadas no startup: {executed}")
+    finally:
+        db.close()

@@ -69,7 +69,7 @@ export default function HeaderStudent({ session }: { session: Session }) {
         {/* Logo com imagem */}
         <a href="/scholar" className="flex items-center gap-2 text-xl font-bold text-slate-900 dark:text-slate-100 hover:opacity-80 transition-opacity">
           <img 
-            src={theme === 'dark' ? '/logo/logo-icon-dark.png' : '/logo/logo-icon-ligth.png'}
+            src={theme === 'dark' ? '/logo/logo-icon-dark-20260627.png' : '/logo/logo-icon-ligth-20260627.png'}
             alt="AtenaAI" 
             className="h-8 w-auto object-contain"
           />

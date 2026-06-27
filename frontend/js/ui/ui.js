@@ -5,7 +5,7 @@ function updateAllLogos() {
     // Pega o src original para determinar o caminho base
     let originalSrc = img.src;
     let basePath = originalSrc.substring(0, originalSrc.lastIndexOf('/') + 1);
-    let fileName = isDark ? "logo-icon-dark.png" : "logo-icon-ligth.png";
+    let fileName = isDark ? "logo-icon-dark-20260627.png" : "logo-icon-ligth-20260627.png";
     img.src = basePath + fileName;
   });
 }

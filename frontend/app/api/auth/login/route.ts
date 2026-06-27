@@ -3,6 +3,19 @@ import type { LoginRequest } from '@/lib/types/auth'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
 
+async function parseBackendResponse(response: Response): Promise<{ data: any; rawText: string }> {
+  const rawText = await response.text()
+  if (!rawText) {
+    return { data: null, rawText: '' }
+  }
+
+  try {
+    return { data: JSON.parse(rawText), rawText }
+  } catch {
+    return { data: null, rawText }
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body: LoginRequest = await request.json()
@@ -27,15 +40,27 @@ export async function POST(request: NextRequest) {
       credentials: 'include',
     })
 
+    const { data, rawText } = await parseBackendResponse(response)
+
     if (!response.ok) {
-      const error = await response.json()
       return NextResponse.json(
-        { message: error.detail || 'Falha ao fazer login' },
+        {
+          message:
+            data?.detail ||
+            data?.message ||
+            rawText ||
+            'Falha ao fazer login',
+        },
         { status: response.status }
       )
     }
 
-    const data = await response.json()
+    if (!data) {
+      return NextResponse.json(
+        { message: 'Resposta invalida do servidor de autenticacao' },
+        { status: 502 }
+      )
+    }
 
     const backendUser = data?.user || {}
     const profileImage = backendUser.profile_image || backendUser.avatar_url || null
@@ -72,8 +97,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[Auth/Login] Error:', error)
     return NextResponse.json(
-      { message: 'Erro ao fazer login' },
-      { status: 500 }
+      { message: 'Servico de autenticacao indisponivel no momento' },
+      { status: 502 }
     )
   }
 }
