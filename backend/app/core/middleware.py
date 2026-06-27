@@ -10,6 +10,7 @@ from typing import Callable
 
 from app.core.logger import logger, log_api_call, log_error
 from app.core.cache import rate_limiter
+from app.core.config import ENVIRONMENT, DEV_LOGIN_RATE_LIMIT_FALLBACK
 
 # ===================================================================
 # MIDDLEWARE DE LOGGING E PERFORMANCE
@@ -85,6 +86,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ("/api/v1/classrooms/", 60, 60),    # 60 por minuto
     ]
     DEFAULT_LIMIT = (120, 60)  # Default: 120 por minuto
+
+    @staticmethod
+    def _is_local_request(request: Request) -> bool:
+        host = (request.client.host if request.client else "") or ""
+        return host in {"127.0.0.1", "::1", "localhost"}
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Não limita rotas que retornam assets
@@ -117,6 +123,19 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         
         # Verificar rate limit
         if not rate_limiter.is_allowed(rate_key, max_requests, window):
+            # Fallback para facilitar testes locais em desenvolvimento.
+            if (
+                matched_pattern == "/api/v1/auth/login"
+                and ENVIRONMENT != "production"
+                and DEV_LOGIN_RATE_LIMIT_FALLBACK
+                and self._is_local_request(request)
+            ):
+                logger.warning(
+                    "[RATE-LIMIT] Fallback dev ativo para login local: "
+                    f"ip={request.client.host if request.client else 'unknown'}"
+                )
+                return await call_next(request)
+
             remaining = rate_limiter.get_remaining(rate_key, max_requests, window)
             reset_time = rate_limiter.get_reset_time(rate_key, window)
             
