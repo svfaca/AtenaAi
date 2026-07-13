@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import { resolveAvatarUrl } from "@/lib/utils/avatar";
 
 const INTERESTS = [
   "Matemática",
@@ -44,6 +45,7 @@ export function SettingsModal({ isOpen, onClose }: {
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
+  const avatarUrl = resolveAvatarUrl(user?.profile_image, process.env.NEXT_PUBLIC_API_URL);
   
   // Estados para manter os dados sincronizados
   const [formData, setFormData] = useState({
@@ -308,8 +310,8 @@ export function SettingsModal({ isOpen, onClose }: {
                 <div className="w-24 h-24 rounded-full bg-blue-600 dark:bg-blue-700 flex items-center justify-center text-white font-bold text-2xl overflow-hidden">
                   {profileImagePreview ? (
                     <img src={profileImagePreview} alt="Preview" className="w-full h-full object-cover" />
-                  ) : user.profile_image ? (
-                    <img src={user.profile_image} alt={user.full_name} className="w-full h-full object-cover" />
+                  ) : avatarUrl ? (
+                    <img src={avatarUrl} alt={user.full_name} className="w-full h-full object-cover" />
                   ) : (
                     <span>{user.full_name?.charAt(0).toUpperCase()}</span>
                   )}

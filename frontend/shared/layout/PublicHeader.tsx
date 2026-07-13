@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useThemeMode } from '@/lib/hooks/useThemeMode';
 import { useAboutModal } from '@/features/about';
 import { useAuth, LoginModal, SignupModal } from '@/features/auth';
+import { resolveAvatarUrl } from '@/lib/utils/avatar';
 
 export default function PublicHeader() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -17,6 +18,7 @@ export default function PublicHeader() {
   const isDark = theme === 'dark';
   const userDisplayName = user?.name || user?.full_name || user?.nickname || user?.email?.split('@')[0] || 'Usuario';
   const userInitial = userDisplayName.charAt(0).toUpperCase();
+  const avatarUrl = resolveAvatarUrl(user?.profile_image, process.env.NEXT_PUBLIC_API_URL);
 
   const handleBrandClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
     if (isAboutOpen) {
@@ -82,12 +84,9 @@ export default function PublicHeader() {
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-md">
                   <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-medium overflow-hidden">
-                    {user.profile_image ? (
+                    {avatarUrl ? (
                       <img 
-                        src={user.profile_image.startsWith('http') 
-                          ? user.profile_image 
-                          : `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}${user.profile_image}`
-                        } 
+                        src={avatarUrl}
                         alt={userDisplayName}
                         className="w-full h-full object-cover"
                       />
@@ -164,12 +163,9 @@ export default function PublicHeader() {
               <>
                 <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-md">
                   <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-medium overflow-hidden">
-                    {user.profile_image ? (
+                    {avatarUrl ? (
                       <img 
-                        src={user.profile_image.startsWith('http') 
-                          ? user.profile_image 
-                          : `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}${user.profile_image}`
-                        } 
+                        src={avatarUrl}
                         alt={userDisplayName}
                         className="w-full h-full object-cover"
                       />
