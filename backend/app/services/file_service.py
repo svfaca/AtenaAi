@@ -16,6 +16,22 @@ ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
 
+def get_public_base_url(base_url: Optional[str] = None) -> str:
+    """Resolve a URL pública do backend para gerar links de avatar corretos."""
+    if base_url and base_url.strip():
+        return base_url.rstrip("/")
+
+    configured = (
+        os.getenv("PUBLIC_BASE_URL")
+        or os.getenv("BACKEND_PUBLIC_URL")
+        or os.getenv("APP_URL")
+        or os.getenv("API_BASE_URL")
+        or os.getenv("NEXT_PUBLIC_API_URL")
+        or "http://127.0.0.1:8000"
+    )
+    return configured.rstrip("/")
+
+
 class FileService:
     """Serviço centralizado para gerenciar uploads de arquivos"""
 
@@ -68,8 +84,9 @@ class FileService:
             with open(file_path, "wb") as f:
                 f.write(contents)
 
-            # Retornar URL completa
-            return f"{base_url}/{file_path}"
+            # Retornar URL completa usando o host público correto
+            public_base_url = get_public_base_url(base_url)
+            return f"{public_base_url}/{file_path}"
 
         except Exception as e:
             from app.core.logger import logger
@@ -130,8 +147,9 @@ class FileService:
             with open(file_path, "wb") as f:
                 f.write(file_content)
 
-            # Retornar URL completa
-            return f"{base_url}/{file_path}"
+            # Retornar URL completa usando o host público correto
+            public_base_url = get_public_base_url(base_url)
+            return f"{public_base_url}/{file_path}"
 
         except Exception as e:
             from app.core.logger import logger

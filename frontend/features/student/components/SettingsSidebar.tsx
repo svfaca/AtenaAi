@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { resolveAvatarUrl } from '@/lib/utils/avatar';
 import { useSWRConfig } from 'swr';
 import { useAuth } from '@/features/auth';
 import { useNotification } from '@/lib/hooks/useNotification';
@@ -247,12 +248,7 @@ export default function SettingsSidebar({ open, onClose }: SettingsSidebarProps)
   if (!open) return null;
 
   const userInitial = formData.full_name?.charAt(0)?.toUpperCase() || 'U';
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-  const avatarUrl = user?.profile_image 
-    ? (user.profile_image.startsWith('http') 
-        ? user.profile_image 
-        : `${API_URL}${user.profile_image}`)
-    : null;
+  const avatarUrl = resolveAvatarUrl(user?.profile_image, process.env.NEXT_PUBLIC_API_URL);
 
   return createPortal(
     <div className="fixed inset-0 z-[1500]">

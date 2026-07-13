@@ -3,6 +3,7 @@
 import { ReactNode } from 'react'
 import { useSidebar } from './hooks/useSidebar'
 import SidebarContent from './SidebarContent'
+import { resolveAvatarUrl } from '@/lib/utils/avatar'
 
 export interface SidebarProps {
   userName: string
@@ -41,12 +42,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const { isCollapsed, isMobileOpen, toggleCollapsed, closeMobile } = useSidebar()
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
-  const avatarUrl = userAvatar
-    ? userAvatar.startsWith('http')
-      ? userAvatar
-      : `${API_URL}${userAvatar}`
-    : null
+  const avatarUrl = resolveAvatarUrl(userAvatar, process.env.NEXT_PUBLIC_API_URL)
 
   // Classes para comportamento responsivo
   const desktopCollapsedClass = isCollapsed ? 'md:w-16' : 'md:w-72'

@@ -24,7 +24,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 BOOTSTRAP_ADMIN_EMAIL = os.getenv("BOOTSTRAP_ADMIN_EMAIL")
 
 # URL BASE (Ajuste para localhost quando estiver testando localmente)
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = os.getenv("PUBLIC_BASE_URL") or os.getenv("BACKEND_PUBLIC_URL") or os.getenv("APP_URL") or os.getenv("API_BASE_URL") or os.getenv("NEXT_PUBLIC_API_URL") or "http://127.0.0.1:8000"
 # Para deploy, use: "https://atenaai.onrender.com"
 
 
@@ -67,6 +67,7 @@ class AuthSuccessResponse(BaseModel):
 def register(
     user: UserCreate,
     response: Response,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -145,7 +146,7 @@ def register(
             profile_image_url = FileService.save_profile_image_from_base64(
                 user.profile_image,
                 new_user.id,
-                BASE_URL
+                str(request.base_url)
             )
             if profile_image_url:
                 logger.info(f"[REGISTRO] Imagem salva: {profile_image_url}")
@@ -347,6 +348,7 @@ async def update_profile(
     gender: Optional[str] = Form(None),
     interests: Optional[str] = Form(None),
     profile_image: Optional[UploadFile] = File(None),
+    request: Request = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -407,7 +409,7 @@ async def update_profile(
         new_image_url = await FileService.save_profile_image_from_upload(
             profile_image,
             user.id,
-            BASE_URL
+            str(request.base_url) if request else BASE_URL
         )
         if new_image_url:
             logger.info(f"[UPDATE-PROFILE] Nova imagem salva: {new_image_url}")

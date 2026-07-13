@@ -18,6 +18,7 @@ import { useScholar } from "@/lib/contexts/ScholarContext";
 import { useAuth } from "@/lib/contexts/AuthContext";
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import type { Classroom, Conversation } from "@/lib/types";
+import { resolveAvatarUrl } from "@/lib/utils/avatar";
 
 interface Props {
   classrooms: Classroom[];
@@ -36,6 +37,7 @@ export function StudentSidebar({
   const [classroomFilter, setClassroomFilter] = useState("");
   const [isCollapsed, setIsCollapsed] = useState(false); // Começa EXPANDIDO em desktop
   const { selectedConversation, onConversationSelect } = useScholar();
+  const avatarUrl = resolveAvatarUrl(user?.profile_image, process.env.NEXT_PUBLIC_API_URL);
 
   // ✅ Memoizar resultados de filtro (apenas recalcula quando necessário)
   const visibleClassrooms = useMemo(() => {
@@ -77,8 +79,8 @@ export function StudentSidebar({
             className="w-12 h-12 rounded-full bg-blue-600 dark:bg-blue-700 flex items-center justify-center text-white font-bold overflow-hidden hover:scale-105 transition"
             title="Expandir"
           >
-            {user?.profile_image ? (
-              <img src={user.profile_image} alt={user?.full_name ?? "Avatar"} className="w-full h-full object-cover" />
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={user?.full_name ?? "Avatar"} className="w-full h-full object-cover" />
             ) : (
               <span>{getUserInitial()}</span>
             )}
@@ -150,8 +152,8 @@ export function StudentSidebar({
               className="w-10 h-10 rounded-full bg-blue-600 dark:bg-blue-700 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 overflow-hidden hover:scale-105 transition"
               title="Colapsar"
             >
-              {user?.profile_image ? (
-                <img src={user.profile_image} alt={user?.full_name ?? "Avatar"} className="w-full h-full object-cover" />
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={user?.full_name ?? "Avatar"} className="w-full h-full object-cover" />
               ) : (
                 <span>{getUserInitial()}</span>
               )}

@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { resolveAvatarUrl } from '@/lib/utils/avatar';
 
 // Runs synchronously before the browser paints on the client.
 // Falls back to useEffect to avoid SSR warnings during server render.
@@ -64,10 +65,7 @@ export default function AppSidebar({
 
   const desktopCollapsedClass = isDesktopCollapsed ? 'lg:w-[4.5rem]' : 'lg:w-64';
   const mobileVisibilityClass = isMobileOpen ? 'translate-x-0' : '-translate-x-full';
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-  const avatarUrl = userAvatar
-    ? (userAvatar.startsWith('http') ? userAvatar : `${API_URL}${userAvatar}`)
-    : null;
+  const avatarUrl = resolveAvatarUrl(userAvatar, process.env.NEXT_PUBLIC_API_URL);
 
   const avatarToggleLabel = useMemo(() => {
     if (!isDesktop) {

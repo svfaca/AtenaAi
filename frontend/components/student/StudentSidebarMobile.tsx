@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 import { SettingsModal } from '@/components/settings/SettingsModal';
 import type { Classroom, Conversation } from '@/lib/types';
 import { useMemo, useState } from 'react';
+import { resolveAvatarUrl } from '@/lib/utils/avatar';
 
 interface Props {
   classrooms: Classroom[];
@@ -39,6 +40,8 @@ export function StudentSidebarMobile({
     return conversations.filter((c) => (c.title || c.name || '').toLowerCase().includes(query));
   }, [conversations, conversationFilter]);
 
+  const avatarUrl = resolveAvatarUrl(user?.profile_image, process.env.NEXT_PUBLIC_API_URL);
+
   // Gerar iniciais do usuário
   const getUserInitial = () => {
     if (user?.full_name) {
@@ -68,9 +71,9 @@ export function StudentSidebarMobile({
         <div className="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 flex-shrink-0">
           <div className="flex items-center gap-3 flex-1">
             <div className="w-10 h-10 rounded-full bg-blue-600 dark:bg-blue-700 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 overflow-hidden flex-shrink-0">
-              {user?.profile_image && user.profile_image.trim() ? (
+              {avatarUrl ? (
                 <img 
-                  src={user.profile_image} 
+                  src={avatarUrl} 
                   alt={user?.full_name ?? "Avatar do estudante"} 
                   className="w-full h-full object-cover" 
                   onError={(e) => {
