@@ -1,22 +1,22 @@
 ﻿'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useThemeMode } from '@/lib/hooks/useThemeMode';
 import { useAboutModal, AboutModal } from '@/features/about';
-import { useClassroomView } from '@/features/classrooms/hooks/useClassroomView';
-import ClassroomPageModal from '@/features/classrooms/components/modals/ClassroomPageModal';
+import { useNavigationState } from '@/features/navigation/hooks/useNavigationState';
 import AppShell from '@/shared/layout/AppShell';
 import AppHeader from '@/shared/layout/AppHeader';
 import AppSidebar from '@/shared/layout/AppSidebar';
 import StudentSidebarContent from '@/features/student/components/StudentSidebarContent';
 import SidebarFooter from '@/features/student/components/SidebarFooter';
 import SettingsSidebar from '@/features/student/components/SettingsSidebar';
+import MainContent from '@/features/student/components/MainContent';
 
 type StudentAreaProps = {
   userName: string;
   userAvatar?: string | null;
-  children: React.ReactNode;
+  children?: ReactNode;
 };
 
 /**
@@ -25,7 +25,7 @@ type StudentAreaProps = {
  * Responsibilities:
  * - Compose AppShell with student-specific components
  * - Manage UI state (mobile sidebar, settings panel)
- * - Pass children to main area
+ * - Render content via MainContent (não via children)
  *
  * Does NOT:
  * - Fetch data (delegated to feature components)
@@ -36,7 +36,7 @@ export default function StudentArea({ userName, userAvatar, children }: StudentA
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { theme, toggleTheme } = useThemeMode();
   const { isOpen: isAboutOpen, openAbout, closeAbout } = useAboutModal();
-  const { isOpen: isClassroomOpen, classroom, closeClassroom } = useClassroomView();
+  const navigationState = useNavigationState();
 
   const handleBrandClick = () => {
     if (isAboutOpen) {
@@ -48,12 +48,12 @@ export default function StudentArea({ userName, userAvatar, children }: StudentA
     return userName?.trim()?.charAt(0)?.toUpperCase() || 'U';
   }, [userName]);
 
-  // Fechar sidebar mobile quando sala abrir
+  // Fechar sidebar mobile quando qualquer item abrir
   useEffect(() => {
-    if (isClassroomOpen && isMobileSidebarOpen) {
+    if (navigationState.viewType && isMobileSidebarOpen) {
       setIsMobileSidebarOpen(false);
     }
-  }, [isClassroomOpen, isMobileSidebarOpen]);
+  }, [navigationState.viewType, isMobileSidebarOpen]);
 
   const logoPath = theme === 'dark' ? '/logo/logo-icon-dark-20260627.png' : '/logo/logo-icon-ligth-20260627.png';
 
@@ -138,15 +138,9 @@ export default function StudentArea({ userName, userAvatar, children }: StudentA
           onClose={() => setSettingsOpen(false)}
         />
       }
-      about={
-        isClassroomOpen ? (
-          <ClassroomPageModal classroom={classroom} onClose={closeClassroom} />
-        ) : (
-          isAboutOpen && <AboutModal />
-        )
-      }
+      about={isAboutOpen && <AboutModal />}
     >
-      {children}
+      {children ?? <MainContent />}
     </AppShell>
   );
 }

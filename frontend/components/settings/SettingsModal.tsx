@@ -70,22 +70,23 @@ export function SettingsModal({ isOpen, onClose }: {
       
       // 🔥 Parse robusto para todos os formatos
       let interests: string[] = [];
+      const rawInterests = user.interests as unknown;
 
-      if (Array.isArray(user.interests)) {
-        interests = user.interests;
-      } else if (typeof user.interests === "string" && user.interests.trim()) {
+      if (Array.isArray(rawInterests)) {
+        interests = rawInterests;
+      } else if (typeof rawInterests === "string" && rawInterests.trim()) {
         try {
           // Tenta JSON primeiro
-          const parsed = JSON.parse(user.interests);
+          const parsed = JSON.parse(rawInterests);
           if (Array.isArray(parsed)) {
             interests = parsed;
           } else {
             // Se não for array, tenta CSV
-            interests = user.interests.split(",").map(i => i.trim()).filter(i => i);
+            interests = rawInterests.split(",").map(i => i.trim()).filter(i => i);
           }
         } catch {
           // Se JSON falhar, trata como CSV
-          interests = user.interests.split(",").map(i => i.trim()).filter(i => i);
+          interests = rawInterests.split(",").map(i => i.trim()).filter(i => i);
         }
       }
 
@@ -106,18 +107,20 @@ export function SettingsModal({ isOpen, onClose }: {
     // 🔥 Parse robusto para consistência
     let initialInterests: string[] = [];
 
-    if (Array.isArray(user.interests)) {
-      initialInterests = user.interests;
-    } else if (typeof user.interests === "string" && user.interests.trim()) {
+    const rawInterests = user.interests as unknown;
+
+    if (Array.isArray(rawInterests)) {
+      initialInterests = rawInterests;
+    } else if (typeof rawInterests === "string" && rawInterests.trim()) {
       try {
-        const parsed = JSON.parse(user.interests);
+        const parsed = JSON.parse(rawInterests);
         if (Array.isArray(parsed)) {
           initialInterests = parsed;
         } else {
-          initialInterests = user.interests.split(",").map(i => i.trim()).filter(i => i);
+          initialInterests = rawInterests.split(",").map(i => i.trim()).filter(i => i);
         }
       } catch {
-        initialInterests = user.interests.split(",").map(i => i.trim()).filter(i => i);
+        initialInterests = rawInterests.split(",").map(i => i.trim()).filter(i => i);
       }
     }
 

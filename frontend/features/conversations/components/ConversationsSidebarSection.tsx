@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useChat } from '@/features/chat/hooks'
 import { useAboutModal } from '@/features/about'
+import { useNavigationState } from '@/features/navigation/hooks/useNavigationState'
 import { useNotification } from '@/lib/hooks/useNotification'
 import SidebarConversations from '@/features/student/components/SidebarConversations'
 
@@ -24,6 +25,7 @@ export default function ConversationsSidebarSection({
   const [query, setQuery] = useState('')
   const { closeAbout } = useAboutModal()
   const { success, error: errorToast } = useNotification()
+  const navigationState = useNavigationState()
 
   const {
     conversations,
@@ -43,6 +45,13 @@ export default function ConversationsSidebarSection({
   const handleNewConversation = async () => {
     closeAbout()
     try {
+      // Fechar sala automaticamente ao iniciar conversa
+      if (navigationState.viewType === 'classroom') {
+        navigationState.clearSelection()
+      }
+      // Iniciar nova conversa usando novo estado unificado
+      navigationState.selectNewConversation()
+      // Manter compatibilidade com o chat store
       startNewConversation()
     } catch (error) {
       errorToast(error instanceof Error ? error.message : 'Erro ao iniciar conversa')
@@ -52,6 +61,13 @@ export default function ConversationsSidebarSection({
   const handleSelectConversation = async (conversationId: number) => {
     closeAbout()
     try {
+      // Fechar sala automaticamente ao selecionar conversa
+      if (navigationState.viewType === 'classroom') {
+        navigationState.clearSelection()
+      }
+      // Abrir conversa usando novo estado unificado
+      navigationState.selectConversation(conversationId)
+      // Manter compatibilidade com o chat store
       await selectConversation(conversationId)
     } catch (error) {
       errorToast(error instanceof Error ? error.message : 'Erro ao abrir conversa')

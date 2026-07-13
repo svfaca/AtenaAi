@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom';
 import { useRooms } from '@/features/classrooms/hooks/useRooms';
 import { useAboutModal } from '@/features/about';
 import { useClassroomView } from '@/features/classrooms/hooks/useClassroomView';
+import { useNavigationState } from '@/features/navigation/hooks/useNavigationState';
+import { useChat } from '@/features/chat/hooks';
 import { useNotification } from '@/lib/hooks/useNotification';
 import SidebarRooms from '@/features/student/components/SidebarRooms';
 import JoinClassroomModal from '@/features/classrooms/components/modals/JoinClassroomModal';
@@ -41,6 +43,8 @@ export default function RoomsSidebarSection({
   const { rooms, loading, refetch } = useRooms();
   const { closeAbout } = useAboutModal();
   const { openClassroom } = useClassroomView();
+  const { selectConversation } = useChat();
+  const navigationState = useNavigationState();
   const { success, error: errorToast } = useNotification();
 
   // Business logic handlers
@@ -114,15 +118,34 @@ export default function RoomsSidebarSection({
   };
 
   const handleOpenRoom = (roomId: string) => {
-    const targetRoom = rooms.find((room) => room.id === roomId);
+    const targetRoom = rooms.find((room) => String(room.id) === String(roomId));
     if (targetRoom?.status === 'pending') {
       errorToast('Essa sala ainda esta aguardando aprovacao.');
       return;
     }
 
+    if (!targetRoom) {
+      errorToast('Sala nao encontrada.');
+      return;
+    }
+
     closeAbout();
+    
+    // Fechar conversa automaticamente ao abrir sala
+    selectConversation(null);
+    
+    // Abrir sala usando novo estado unificado
+    navigationState.selectClassroom(String(targetRoom.id), {
+      id: String(targetRoom.id),
+      name: targetRoom.name,
+      code: targetRoom.code,
+      description: targetRoom.description,
+      role: 'student',
+    });
+    
+    // Manter compatibilidade com ClassroomViewProvider
     openClassroom({
-      id: targetRoom.id,
+      id: String(targetRoom.id),
       name: targetRoom.name,
       code: targetRoom.code,
       description: targetRoom.description,
@@ -145,7 +168,7 @@ export default function RoomsSidebarSection({
       return;
     }
 
-    const targetRoom = rooms.find((room) => room.id === roomIdToLeave);
+    const targetRoom = rooms.find((room) => String(room.id) === String(roomIdToLeave));
     const isPendingRoom = targetRoom?.status === 'pending';
     const endpoint = isPendingRoom
       ? `/api/classrooms/${roomIdToLeave}/cancel-request`
@@ -192,9 +215,10 @@ export default function RoomsSidebarSection({
     ? rooms.filter((room) => room.name.toLowerCase().includes(normalizedQuery))
     : rooms;
   const selectedRoom = roomIdToLeave
-    ? rooms.find((room) => room.id === roomIdToLeave)
+    ? rooms.find((room) => String(room.id) === String(roomIdToLeave))
     : null;
   const isPendingSelection = selectedRoom?.status === 'pending';
+  const activeClassroomId = navigationState.classroomId;
 
   // Render presentation component
   return (
@@ -204,6 +228,7 @@ export default function RoomsSidebarSection({
         searchQuery={query}
         onSearchQueryChange={setQuery}
         isCollapsed={isCollapsed}
+        activeRoomId={activeClassroomId ? String(activeClassroomId) : null}
         onJoinRoom={handleJoinRoom}
         onLeaveRoom={handleLeaveRoom}
         onOpenRoom={handleOpenRoom}

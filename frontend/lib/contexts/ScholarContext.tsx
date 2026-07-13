@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import type { Conversation } from '@/lib/types';
 
 interface ScholarContextType {
@@ -10,25 +10,29 @@ interface ScholarContextType {
 
 const ScholarContext = createContext<ScholarContextType | undefined>(undefined);
 
-interface Props {
+interface ScholarProviderProps {
   children: ReactNode;
   initialConversation?: Conversation | null;
 }
 
-export function ScholarProvider({ children, initialConversation }: Props) {
+export function ScholarProvider({ children, initialConversation }: ScholarProviderProps) {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(
-    initialConversation || null
+    initialConversation ?? null
   );
 
-  const handleConversationSelect = (conversation: Conversation) => {
+  const handleConversationSelect = useCallback((conversation: Conversation) => {
     setSelectedConversation(conversation);
-  };
+  }, []);
 
-  return (
-    <ScholarContext.Provider value={{ selectedConversation, onConversationSelect: handleConversationSelect }}>
-      {children}
-    </ScholarContext.Provider>
+  const value = useMemo<ScholarContextType>(
+    () => ({
+      selectedConversation,
+      onConversationSelect: handleConversationSelect,
+    }),
+    [handleConversationSelect, selectedConversation]
   );
+
+  return <ScholarContext.Provider value={value}>{children}</ScholarContext.Provider>;
 }
 
 export function useScholar() {

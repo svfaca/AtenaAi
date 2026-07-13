@@ -42,6 +42,7 @@ export type Classroom = {
   name: string;
   code: string;
   status?: "approved" | "pending" | string;
+  description?: string | null;
   teacher?: {
     full_name: string;
   } | null;

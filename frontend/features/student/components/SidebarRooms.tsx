@@ -9,9 +9,10 @@ type SidebarRoomsProps = {
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
   isCollapsed: boolean;
+  activeRoomId?: string | null;
   onJoinRoom: () => void;
-  onLeaveRoom: (roomId: string) => void;
-  onOpenRoom: (roomId: string) => void;
+  onLeaveRoom: (roomId: string | number) => void;
+  onOpenRoom: (roomId: string | number) => void;
 };
 
 export default function SidebarRooms({
@@ -19,6 +20,7 @@ export default function SidebarRooms({
   searchQuery,
   onSearchQueryChange,
   isCollapsed,
+  activeRoomId,
   onJoinRoom,
   onLeaveRoom,
   onOpenRoom,
@@ -29,10 +31,12 @@ export default function SidebarRooms({
 
   useClickOutside(menuRef, () => setActiveMenuId(null));
 
-  const toggleMenu = useCallback((roomId: string, event: React.MouseEvent<HTMLButtonElement>) => {
+  const toggleMenu = useCallback((roomId: string | number, event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
-    
-    if (activeMenuId === roomId) {
+
+    const normalizedRoomId = String(roomId);
+
+    if (activeMenuId === normalizedRoomId) {
       setActiveMenuId(null);
       setMenuPosition(null);
       return;
@@ -45,10 +49,10 @@ export default function SidebarRooms({
       left: buttonRect.left - 192 + buttonRect.width, // 192px = w-48
     });
     
-    setActiveMenuId(roomId);
+    setActiveMenuId(normalizedRoomId);
   }, [activeMenuId]);
 
-  const handleLeaveRoom = (roomId: string) => {
+  const handleLeaveRoom = (roomId: string | number) => {
     onLeaveRoom(roomId);
     setActiveMenuId(null);
   };
@@ -111,7 +115,11 @@ export default function SidebarRooms({
               <div key={room.id} className="group relative">
                 <div
                   onClick={() => onOpenRoom(room.id)}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700"
+                  className={`flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
+                    activeRoomId === String(room.id)
+                      ? 'bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100'
+                      : 'text-gray-700 hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700'
+                  }`}
                 >
                   <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
@@ -138,7 +146,7 @@ export default function SidebarRooms({
                   </button>
                 </div>
 
-                {activeMenuId === room.id && menuPosition && (
+                {activeMenuId === String(room.id) && menuPosition && (
                   <div
                     ref={menuRef}
                     style={{

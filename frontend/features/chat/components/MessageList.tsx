@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import TextMessage from './TextMessage';
 import AtenaLimitMessage from './AtenaLimitMessage';
 
-interface Message {
+export interface Message {
   id: string | number;
   content: string;
   role: 'user' | 'assistant' | 'system';

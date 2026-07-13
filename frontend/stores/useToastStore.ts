@@ -47,54 +47,14 @@ export const useToastStore = create<ToastState>((set) => ({
 
   success: (message, duration = 3000) => {
     console.log('[useToastStore] success() chamado com:', message)
-    return set((state) => {
-      const id = `${Date.now()}-${Math.random()}`
-      const newToasts = [...state.toasts, { id, message, type: 'success' as ToastType, duration }]
-      console.log('[useToastStore] Toast adicionado ao state:', newToasts)
-      
-      setTimeout(() => {
-        set((s) => ({
-          toasts: s.toasts.filter((t) => t.id !== id),
-        }))
-      }, duration)
-
-      return { toasts: newToasts }
-    }) || ''
+    return useToastStore.getState().addToast(message, 'success', duration)
   },
 
-  error: (message, duration = 4000) =>
-    set((state) => {
-      const id = `${Date.now()}-${Math.random()}`
-      const newToasts = [...state.toasts, { id, message, type: 'error' as ToastType, duration }]
-      
-      setTimeout(() => {
-        set((s) => ({
-          toasts: s.toasts.filter((t) => t.id !== id),
-        }))
-      }, duration)
+  error: (message, duration = 4000) => useToastStore.getState().addToast(message, 'error', duration),
 
-      return { toasts: newToasts }
-    }) || '',
+  loading: (message, duration) => useToastStore.getState().addToast(message, 'loading', duration),
 
-  loading: (message, duration) =>
-    set((state) => {
-      const id = `${Date.now()}-${Math.random()}`
-      return { toasts: [...state.toasts, { id, message, type: 'loading' as ToastType, duration }] }
-    }) || '',
-
-  info: (message, duration = 3000) =>
-    set((state) => {
-      const id = `${Date.now()}-${Math.random()}`
-      const newToasts = [...state.toasts, { id, message, type: 'info' as ToastType, duration }]
-      
-      setTimeout(() => {
-        set((s) => ({
-          toasts: s.toasts.filter((t) => t.id !== id),
-        }))
-      }, duration)
-
-      return { toasts: newToasts }
-    }) || '',
+  info: (message, duration = 3000) => useToastStore.getState().addToast(message, 'info', duration),
 
   dismiss: (id) =>
     set((state) => ({
