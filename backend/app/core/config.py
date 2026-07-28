@@ -19,6 +19,28 @@ ENV_FILE = BASE_DIR / ".env"
 if os.getenv("ENVIRONMENT") != "production":
     load_dotenv(ENV_FILE)
 
+
+# =========================================================
+# UTILITÁRIO: getenv seguro para Railway
+# Railway pode salvar variáveis com \n no final do nome
+# Ex: "OPENAI_API_KEY\n" em vez de "OPENAI_API_KEY"
+# =========================================================
+
+def getenv_railway(key: str, default: str | None = None) -> str | None:
+    """
+    Busca variável de ambiente ignorando possíveis \n no final do nome.
+    Workaround para bug do Railway onde variáveis são salvas com \n.
+    """
+    value = os.getenv(key)
+    if value is not None:
+        return value
+    # Fallback: buscar ignorando \n no nome
+    for env_key, env_value in os.environ.items():
+        if env_key.strip() == key:
+            print(f"🔧 getenv_railway: encontrada '{key}' com key real={repr(env_key)}")
+            return env_value
+    return default
+
 # =========================================================
 # ENVIRONMENT & DEBUG
 # =========================================================
@@ -54,22 +76,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "2160
 # =========================================================
 
 AI_MODEL = os.getenv("AI_MODEL", "gpt-4o-mini")
-
-# Buscar OPENAI_API_KEY de todas as formas possíveis
-# No Railway, variáveis podem vir com \n no nome devido a bugs de formatação
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if not OPENAI_API_KEY:
-    # Tentar buscar ignorando \n no final do nome da variável
-    for key, value in os.environ.items():
-        if key.strip() == "OPENAI_API_KEY":
-            OPENAI_API_KEY = value
-            print(f"🔧 Corrigido: encontrada OPENAI_API_KEY com key={repr(key)}")
-            break
-
-# DEBUG: Ver o valor real da variável
-print(f"🔍 DEBUG - ENVIRONMENT={ENVIRONMENT}")
-print(f"🔍 DEBUG - OPENAI_API_KEY lida={repr(OPENAI_API_KEY)}")
-print(f"🔍 DEBUG - OPENAI_API_KEY length={len(OPENAI_API_KEY) if OPENAI_API_KEY else 0}")
+OPENAI_API_KEY = getenv_railway("OPENAI_API_KEY")
 
 # Limites de input/processing
 MAX_INPUT_LENGTH = int(os.getenv("MAX_INPUT_LENGTH", "500"))
@@ -86,19 +93,7 @@ if not OPENAI_API_KEY or OPENAI_API_KEY.strip() == "" or OPENAI_API_KEY == "sk-"
 # DATABASE CONFIG
 # =========================================================
 
-# Buscar DATABASE_URL de todas as formas possíveis (mesmo bug do \n)
-DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
-    for key, value in os.environ.items():
-        if key.strip() == "DATABASE_URL":
-            DATABASE_URL = value
-            print(f"🔧 Corrigido: encontrada DATABASE_URL com key={repr(key)}")
-            break
-
-if not DATABASE_URL:
-    DATABASE_URL = f"sqlite:///{BASE_DIR / 'database.db'}"
-    
-print(f"🔍 DATABASE_URL usada: {DATABASE_URL[:50]}...")
+DATABASE_URL = getenv_railway("DATABASE_URL", f"sqlite:///{BASE_DIR / 'database.db'}")
 
 # Connection pool settings para melhor performance
 DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "5"))
