@@ -14,7 +14,10 @@ from typing import List
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 ENV_FILE = BASE_DIR / ".env"
 
-load_dotenv(ENV_FILE)
+# Carregar .env APENAS se não estiver em produção
+# No Railway as variáveis são injetadas diretamente no ambiente
+if os.getenv("ENVIRONMENT") != "production":
+    load_dotenv(ENV_FILE)
 
 # =========================================================
 # ENVIRONMENT & DEBUG
@@ -59,7 +62,7 @@ MAX_MESSAGE_HISTORY = int(os.getenv("MAX_MESSAGE_HISTORY", "10"))
 MAX_MESSAGES_PER_REQUEST = int(os.getenv("MAX_MESSAGES_PER_REQUEST", "100"))
 
 # Validar que OpenAI está configurada
-if not OPENAI_API_KEY or OPENAI_API_KEY == "sk-":
+if not OPENAI_API_KEY or OPENAI_API_KEY.strip() == "" or OPENAI_API_KEY == "sk-":
     raise ValueError("⚠️ OPENAI_API_KEY não configurada!")
 
 # =========================================================
