@@ -30,9 +30,10 @@ router = APIRouter(prefix="/users", tags=["Users"])
 # CONFIGURAÇÕES DE AVATAR
 # =========================================================
 
-# Diretório de armazenamento (fora do repo)
-BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
-AVATAR_DIR = BASE_DIR / "backend" / "storage" / "avatars"
+# Diretório de armazenamento de avatares
+# Usa UPLOAD_DIR do config para garantir caminho correto em produção
+from app.core.config import UPLOAD_DIR
+AVATAR_DIR = Path(UPLOAD_DIR) / "avatars"
 
 # Criar diretório se não existir
 AVATAR_DIR.mkdir(parents=True, exist_ok=True)
