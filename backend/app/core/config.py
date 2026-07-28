@@ -54,7 +54,17 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "2160
 # =========================================================
 
 AI_MODEL = os.getenv("AI_MODEL", "gpt-4o-mini")
+
+# Buscar OPENAI_API_KEY de todas as formas possíveis
+# No Railway, variáveis podem vir com \n no nome devido a bugs de formatação
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    # Tentar buscar ignorando \n no final do nome da variável
+    for key, value in os.environ.items():
+        if key.strip() == "OPENAI_API_KEY":
+            OPENAI_API_KEY = value
+            print(f"🔧 Corrigido: encontrada OPENAI_API_KEY com key={repr(key)}")
+            break
 
 # DEBUG: Ver o valor real da variável
 print(f"🔍 DEBUG - ENVIRONMENT={ENVIRONMENT}")
@@ -68,7 +78,9 @@ MAX_MESSAGES_PER_REQUEST = int(os.getenv("MAX_MESSAGES_PER_REQUEST", "100"))
 
 # Validar que OpenAI está configurada
 if not OPENAI_API_KEY or OPENAI_API_KEY.strip() == "" or OPENAI_API_KEY == "sk-":
-    raise ValueError(f"⚠️ OPENAI_API_KEY não configurada! Valor lido: {repr(OPENAI_API_KEY)}")
+    # Listar todas as variáveis do ambiente para diagnóstico
+    all_keys = [k for k in os.environ.keys() if "OPENAI" in k.upper()]
+    raise ValueError(f"⚠️ OPENAI_API_KEY não configurada! Chaves encontradas com 'OPENAI': {all_keys}. Valor lido: {repr(OPENAI_API_KEY)}")
 
 # =========================================================
 # DATABASE CONFIG
