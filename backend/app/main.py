@@ -161,8 +161,16 @@ async def startup_event():
 
     # Criar todas as tabelas que ainda não existem
     logger.info("🔄 Criando tabelas no banco de dados...")
-    Base.metadata.create_all(bind=engine)
-    logger.info("✅ Tabelas criadas/verificadas com sucesso")
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("✅ Tabelas criadas/verificadas com sucesso")
+    except Exception as e:
+        # Ignorar erro de ENUM já existente (ocorre com workers múltiplos)
+        if "duplicate key" in str(e) and "pg_type_typname_nsp_index" in str(e):
+            logger.warning("⚠️ ENUM type já existe (ignorado para multi-worker)")
+        else:
+            logger.error(f"❌ Erro ao criar tabelas: {e}")
+            raise
     
     db = SessionLocal()
     try:
