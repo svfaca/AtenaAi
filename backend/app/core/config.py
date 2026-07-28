@@ -128,13 +128,19 @@ DB_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "3600"))
 # CORS CONFIG - VALIDADO
 # =========================================================
 
-DEFAULT_CORS = "http://127.0.0.1:5500,http://localhost:5500,http://127.0.0.1:3000,http://localhost:3000"
-CORS_ORIGINS_STR = os.getenv("CORS_ORIGINS", DEFAULT_CORS)
+DEFAULT_CORS = "https://atena-ai-suporte.vercel.app,http://127.0.0.1:5500,http://localhost:5500,http://127.0.0.1:3000,http://localhost:3000"
+CORS_ORIGINS_STR = getenv_railway("CORS_ORIGINS", DEFAULT_CORS)
 CORS_ORIGINS = [origin.strip() for origin in CORS_ORIGINS_STR.split(",") if origin.strip()]
 
-# Validar em produção
-if IS_PRODUCTION and ("localhost" in str(CORS_ORIGINS) or "127.0.0.1" in str(CORS_ORIGINS)):
-    raise ValueError("⚠️ CORS com localhost em produção! Configure CORS_ORIGINS")
+# Validar em produção: só rejeita se TODAS as origens forem localhost
+if IS_PRODUCTION:
+    all_localhost = True
+    for origin in CORS_ORIGINS:
+        if "localhost" not in origin and "127.0.0.1" not in origin:
+            all_localhost = False
+            break
+    if all_localhost:
+        raise ValueError("⚠️ Todas as origens CORS são localhost em produção! Configure CORS_ORIGINS com o domínio do Vercel")
 
 # =========================================================
 # UPLOAD CONFIG
