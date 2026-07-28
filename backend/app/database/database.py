@@ -9,14 +9,21 @@ import os
 from app.core.logger import logger
 
 # =====================================================
-# DATABASE URL
+# DATABASE URL - usar getenv_railway do config se possível
 # =====================================================
 
 # Base path aligned with app.core.config and Alembic (backend/)
 BASE_DIR = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 )
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'database.db')}")
+
+# Tentar usar getenv_railway do config (que corrige bug do Railway)
+try:
+    from app.core.config import DATABASE_URL as CONFIG_DATABASE_URL
+    DATABASE_URL = CONFIG_DATABASE_URL
+except Exception:
+    # Fallback se config ainda não foi carregado
+    DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'database.db')}")
 
 # Corrige prefixo postgres antigo (Railway)
 if DATABASE_URL.startswith("postgres://"):
