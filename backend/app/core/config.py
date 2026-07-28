@@ -56,6 +56,11 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "2160
 AI_MODEL = os.getenv("AI_MODEL", "gpt-4o-mini")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
+# DEBUG: Ver o valor real da variável
+print(f"🔍 DEBUG - ENVIRONMENT={ENVIRONMENT}")
+print(f"🔍 DEBUG - OPENAI_API_KEY lida={repr(OPENAI_API_KEY)}")
+print(f"🔍 DEBUG - OPENAI_API_KEY length={len(OPENAI_API_KEY) if OPENAI_API_KEY else 0}")
+
 # Limites de input/processing
 MAX_INPUT_LENGTH = int(os.getenv("MAX_INPUT_LENGTH", "500"))
 MAX_MESSAGE_HISTORY = int(os.getenv("MAX_MESSAGE_HISTORY", "10"))
@@ -63,7 +68,7 @@ MAX_MESSAGES_PER_REQUEST = int(os.getenv("MAX_MESSAGES_PER_REQUEST", "100"))
 
 # Validar que OpenAI está configurada
 if not OPENAI_API_KEY or OPENAI_API_KEY.strip() == "" or OPENAI_API_KEY == "sk-":
-    raise ValueError("⚠️ OPENAI_API_KEY não configurada!")
+    raise ValueError(f"⚠️ OPENAI_API_KEY não configurada! Valor lido: {repr(OPENAI_API_KEY)}")
 
 # =========================================================
 # DATABASE CONFIG
