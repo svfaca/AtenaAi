@@ -86,8 +86,19 @@ if not OPENAI_API_KEY or OPENAI_API_KEY.strip() == "" or OPENAI_API_KEY == "sk-"
 # DATABASE CONFIG
 # =========================================================
 
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'database.db'}")
-print("USANDO BANCO ABSOLUTO:", BASE_DIR / "database.db")
+# Buscar DATABASE_URL de todas as formas possíveis (mesmo bug do \n)
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    for key, value in os.environ.items():
+        if key.strip() == "DATABASE_URL":
+            DATABASE_URL = value
+            print(f"🔧 Corrigido: encontrada DATABASE_URL com key={repr(key)}")
+            break
+
+if not DATABASE_URL:
+    DATABASE_URL = f"sqlite:///{BASE_DIR / 'database.db'}"
+    
+print(f"🔍 DATABASE_URL usada: {DATABASE_URL[:50]}...")
 
 # Connection pool settings para melhor performance
 DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "5"))
