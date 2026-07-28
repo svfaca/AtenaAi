@@ -8,6 +8,17 @@ from dotenv import load_dotenv
 from typing import List
 
 # =========================================================
+# DEBUG: Listar TODAS as variáveis de ambiente no startup
+# =========================================================
+print("=" * 60)
+print("🔍 DEBUG - TODAS AS VARIÁVEIS DE AMBIENTE:")
+for k, v in sorted(os.environ.items()):
+    # Mostrar apenas primeiros 50 chars do valor por segurança
+    val_preview = repr(v[:50]) if v else "None"
+    print(f"  {repr(k)} = {val_preview}")
+print("=" * 60)
+
+# =========================================================
 # BASE DIR & ENV LOAD
 # =========================================================
 
@@ -31,14 +42,26 @@ def getenv_railway(key: str, default: str | None = None) -> str | None:
     Busca variável de ambiente ignorando possíveis \n no final do nome.
     Workaround para bug do Railway onde variáveis são salvas com \n.
     """
+    # 1. Tentativa normal
     value = os.getenv(key)
-    if value is not None:
-        return value
-    # Fallback: buscar ignorando \n no nome
+    if value and value.strip():
+        return value.strip()
+    
+    # 2. Fallback: buscar em TODAS as chaves (case insensitive, strip)
     for env_key, env_value in os.environ.items():
-        if env_key.strip() == key:
-            print(f"🔧 getenv_railway: encontrada '{key}' com key real={repr(env_key)}")
-            return env_value
+        if env_key.strip().upper() == key.upper():
+            val = env_value.strip()
+            # Remover '=' do início se existir
+            if val.startswith("="):
+                val = val[1:].strip()
+            print(f"🔧 getenv_railway: encontrada '{key}' key={repr(env_key)} valor={repr(val[:60])}")
+            if val:
+                return val
+            break
+    
+    # 3. Debug: listar chaves similares
+    similar = [f"{repr(k)}={repr(v[:30])}" for k, v in os.environ.items() if key.lower() in k.lower()]
+    print(f"🔍 getenv_railway: '{key}' não encontrada. Chaves similares: {similar}")
     return default
 
 # =========================================================
