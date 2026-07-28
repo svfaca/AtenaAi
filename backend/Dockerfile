@@ -67,4 +67,5 @@ USER appuser
 EXPOSE 8000
 
 # Comando para produção (otimizado)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+# Usa $PORT (Railway espera porta dinâmica, ex: 8080)
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 4
