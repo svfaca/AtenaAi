@@ -14,13 +14,13 @@ from app.core.config import (
     ENVIRONMENT, LOG_LEVEL
 )
 from app.core.logger import logger, setup_logging
+from app.database.database import Base, engine
 from app.core.middleware import LoggingMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
 from app.core.exceptions import (
     AtenaAIException, ValidationError, 
     atena_exception_handler, validation_exception_handler, 
     generic_exception_handler
 )
-from app.database.database import Base, engine
 from app.database.data_migrations import apply_pending_data_migrations
 from app.database.database import SessionLocal
 
@@ -159,6 +159,11 @@ async def startup_event():
     logger.info(f"Database: {os.getenv('DATABASE_URL', 'sqlite:///./database.db')}")
     logger.info("=" * 80)
 
+    # Criar todas as tabelas que ainda não existem
+    logger.info("🔄 Criando tabelas no banco de dados...")
+    Base.metadata.create_all(bind=engine)
+    logger.info("✅ Tabelas criadas/verificadas com sucesso")
+    
     db = SessionLocal()
     try:
         executed = apply_pending_data_migrations(db)
