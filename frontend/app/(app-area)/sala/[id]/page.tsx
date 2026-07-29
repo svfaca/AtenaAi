@@ -7,7 +7,7 @@
  */
 
 import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/features/auth/services/auth.service';
+import { getCurrentUser } from '@/lib/server-api';
 import StudentLayout from '@/features/student/components/StudentLayout';
 
 interface Props {

@@ -4,9 +4,11 @@ from jose import jwt
 import os
 from typing import Optional
 
+from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES as CONFIG_ACCESS_TOKEN_EXPIRE_MINUTES
+
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-in-production")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 15  # ⚠️ SHORT (was 30)
+ACCESS_TOKEN_EXPIRE_MINUTES = CONFIG_ACCESS_TOKEN_EXPIRE_MINUTES  # from config (env: ACCESS_TOKEN_EXPIRE_MINUTES, default: 21600 = 15d)
 REFRESH_TOKEN_EXPIRE_DAYS = 7     # 🔒 LONG-LIVED
 
 # ========================================================

@@ -40,12 +40,27 @@ export async function proxy(req: Request, path: string) {
     // Ler resposta
     const text = await backendRes.text()
 
+    // Construir headers da resposta
+    const responseHeaders: Record<string, string> = {
+      'Content-Type': backendRes.headers.get('content-type') || 'application/json',
+    }
+
+    // 🔥 CRÍTICO: Propagar cookies do backend (access_token, refresh_token)
+    const setCookieHeaders = backendRes.headers.getSetCookie?.() ?? []
+    for (const setCookie of setCookieHeaders) {
+      // NextResponse.headers.append não funciona com string simples,
+      // então usamos um approach diferente
+      if (!responseHeaders['Set-Cookie']) {
+        responseHeaders['Set-Cookie'] = setCookie
+      } else {
+        responseHeaders['Set-Cookie'] += `, ${setCookie}`
+      }
+    }
+
     // Retornar resposta
     return new NextResponse(text, {
       status: backendRes.status,
-      headers: {
-        'Content-Type': backendRes.headers.get('content-type') || 'application/json',
-      },
+      headers: responseHeaders,
     })
   } catch (error) {
     console.error(`[Proxy] Error proxying ${req.method} ${path}:`, error)

@@ -10,11 +10,19 @@ export async function POST(request: NextRequest) {
 
   const data = await response.json()
   
-  return NextResponse.json(
+  const result = NextResponse.json(
     {
       message: 'Token renovado com sucesso',
       user: data.user,
     },
     { status: 200 }
   )
+
+  // 🔥 CRÍTICO: Propagar cookies do backend (access_token e refresh_token)
+  const setCookieHeaders = response.headers.getSetCookie?.() ?? []
+  for (const setCookie of setCookieHeaders) {
+    result.headers.append('Set-Cookie', setCookie)
+  }
+
+  return result
 }
