@@ -46,10 +46,10 @@ export async function proxy(req: Request, path: string) {
     }
 
     // 🔥 CRÍTICO: Propagar cookies do backend (access_token, refresh_token)
+    // Os route handlers (login, refresh) são responsáveis por recriar os cookies
+    // com o domínio correto do frontend. O proxy apenas passa os Set-Cookie adiante.
     const setCookieHeaders = backendRes.headers.getSetCookie?.() ?? []
     for (const setCookie of setCookieHeaders) {
-      // NextResponse.headers.append não funciona com string simples,
-      // então usamos um approach diferente
       if (!responseHeaders['Set-Cookie']) {
         responseHeaders['Set-Cookie'] = setCookie
       } else {

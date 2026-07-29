@@ -18,10 +18,31 @@ export async function POST(request: NextRequest) {
     { status: 200 }
   )
 
-  // 🔥 CRÍTICO: Propagar cookies do backend (access_token e refresh_token)
+  // 🔥 CRÍTICO: Recriar cookies de autenticação para o domínio do frontend
+  // Não podemos copiar cegamente os Set-Cookie do backend porque
+  // cookies com domain do backend não são enviados pelo navegador para o frontend
+  const isProduction = process.env.NODE_ENV === 'production'
+  const cookieOptions = {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'lax' as const,
+    path: '/',
+  }
+
   const setCookieHeaders = response.headers.getSetCookie?.() ?? []
   for (const setCookie of setCookieHeaders) {
-    result.headers.append('Set-Cookie', setCookie)
+    const match = setCookie.match(/^([^=]+)=([^;]+)/)
+    if (match) {
+      const [, key, value] = match
+      if (key === 'access_token' || key === 'refresh_token') {
+        // Recriar o cookie SEM domain para usar o domínio do frontend
+        result.cookies.set(key, value, cookieOptions)
+      } else {
+        result.headers.append('Set-Cookie', setCookie)
+      }
+    } else {
+      result.headers.append('Set-Cookie', setCookie)
+    }
   }
 
   return result

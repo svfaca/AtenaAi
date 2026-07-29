@@ -78,19 +78,36 @@ export async function POST(request: NextRequest) {
       message: data.message || 'Login realizado com sucesso',
     })
 
-    // Cookie de dica de sessão
-    result.cookies.set('atena_session_hint', '1', {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60,
+    // 🔥 CRÍTICO: Recriar cookies de autenticação para o domínio do frontend
+    // Não podemos copiar cegamente os Set-Cookie do backend porque:
+    // 1. Backend pode estar em domínio diferente (ex: Render)
+    // 2. Cookies com domain do backend não são enviados pelo navegador para o frontend
+    // 3. Precisamos definir os cookies SEM domain para usar o domínio atual (Vercel)
+    const isProduction = process.env.NODE_ENV === 'production'
+    const cookieOptions = {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax' as const,
       path: '/',
-    })
+    }
 
-    // Copiar Set-Cookie do backend
+    // Extrair tokens do Set-Cookie do backend
     const setCookieHeaders = response.headers.getSetCookie?.() ?? []
     for (const setCookie of setCookieHeaders) {
-      result.headers.append('Set-Cookie', setCookie)
+      // Parsear o cookie para extrair nome e valor
+      const match = setCookie.match(/^([^=]+)=([^;]+)/)
+      if (match) {
+        const [, key, value] = match
+        if (key === 'access_token' || key === 'refresh_token') {
+          // Recriar o cookie SEM domain para usar o domínio do frontend
+          result.cookies.set(key, value, cookieOptions)
+        } else {
+          // Para outros cookies, manter o original
+          result.headers.append('Set-Cookie', setCookie)
+        }
+      } else {
+        result.headers.append('Set-Cookie', setCookie)
+      }
     }
 
     return result
