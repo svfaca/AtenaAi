@@ -45,6 +45,8 @@ export async function api<T = unknown>(
   const isLegacyAuthPath = path.startsWith("/auth/");
   const isLegacyDataPath = path.startsWith("/classrooms") || path.startsWith("/conversations");
 
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+  
   let apiPath: string;
 
   if (isRouteHandlerPath || isLegacyAuthPath || isLegacyDataPath) {
@@ -52,7 +54,6 @@ export async function api<T = unknown>(
     apiPath = path;
   } else {
     // ✅ Fallback para chamadas diretas (não recomendado)
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
     if (!baseUrl) {
       throw new Error("NEXT_PUBLIC_API_URL is not defined");
     }
@@ -74,11 +75,18 @@ export async function api<T = unknown>(
         : {}),
     };
 
-    if (memoryToken) {
+    // 🔥 Se temos token em memória, chamar backend DIRETAMENTE em vez de route handler
+    // Isso evita problemas com proxy que não propaga headers corretamente
+    let finalPath = normalizedPath;
+    if (memoryToken && baseUrl && (path.startsWith('/api/conversations') || path.startsWith('/api/classrooms'))) {
+      finalPath = `${baseUrl}${path}`;
+      headers["Authorization"] = `Bearer ${memoryToken}`;
+      // Não precisa de credentials include quando chamamos backend direto com Bearer
+    } else if (memoryToken) {
       headers["Authorization"] = `Bearer ${memoryToken}`;
     }
 
-    const response = await fetch(normalizedPath, {
+    const response = await fetch(finalPath, {
       credentials: "include", // ✅ Inclui HttpOnly cookies automaticamente
       ...options,
       headers,
