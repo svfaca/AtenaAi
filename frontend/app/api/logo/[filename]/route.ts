@@ -13,11 +13,24 @@ export async function GET(
     return NextResponse.json({ error: 'Invalid filename' }, { status: 400 })
   }
 
-  // Tentar servir de public/logo/
-  const logoPath = path.join(process.cwd(), 'public', 'logo', filename)
+  // Tentar múltiplos caminhos (Vercel pode usar rootDirectory diferente)
+  const possiblePaths = [
+    path.join(process.cwd(), 'public', 'logo', filename),
+    path.join(process.cwd(), 'frontend', 'public', 'logo', filename),
+    path.join(process.cwd(), '..', 'public', 'logo', filename),
+  ]
 
-  if (!fs.existsSync(logoPath)) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  let logoPath: string | null = null
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      logoPath = p
+      break
+    }
+  }
+
+  if (!logoPath) {
+    console.error('[Logo Route] File not found. Tried paths:', possiblePaths)
+    return NextResponse.json({ error: 'Not found', tried: possiblePaths }, { status: 404 })
   }
 
   const ext = path.extname(filename).toLowerCase()
