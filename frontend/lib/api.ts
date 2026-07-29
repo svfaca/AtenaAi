@@ -18,10 +18,17 @@
  *    - Se falhar: logout gracioso
  */
 
+// 🔒 Controla retries para evitar loop infinito em 401
+let isRefreshing = false;
+let refreshPromise: Promise<void> | null = null;
+
 export async function api<T = unknown>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  retryCount = 0
 ): Promise<T> {
+  const MAX_RETRIES = 1;
+
   // ✅ IMPORTANTE: Todas as chamadas vão para /app/api/*, não para backend direto
   const isRouteHandlerPath = path.startsWith("/api/");
   const isLegacyAuthPath = path.startsWith("/auth/");
@@ -69,12 +76,18 @@ export async function api<T = unknown>(
     }
 
     if (!response.ok) {
-      // ✅ REAL REFRESH TOKEN: Se 401, tenta renovar com refresh_token
-      if (response.status === 401) {
+      // ✅ REAL REFRESH TOKEN: Se 401, tenta renovar com refresh_token (no máximo 1 vez)
+      if (response.status === 401 && retryCount < MAX_RETRIES) {
         try {
-          await refreshAccessToken();
-          // Retry original request com novo access_token
-          return api<T>(path, options);
+          // Se já está refreshindo, aguarda a mesma promise
+          if (!refreshPromise) {
+            refreshPromise = refreshAccessToken().finally(() => {
+              refreshPromise = null;
+            });
+          }
+          await refreshPromise;
+          // Retry original request com novo access_token (incrementa retryCount)
+          return api<T>(path, options, retryCount + 1);
         } catch {
           // Refresh falhou: logout gracioso
           window.location.href = "/";
