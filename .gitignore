@@ -70,10 +70,14 @@ backend/uploads/*
 # ==============================
 
 backend/storage/
-*.png
-*.jpg
-*.jpeg
-*.webp
+backend/uploads/*.png
+backend/uploads/*.jpg
+backend/uploads/*.jpeg
+backend/uploads/*.webp
+frontend/public/logo/*.png
+frontend/public/logo/*.jpg
+frontend/public/logo/*.jpeg
+frontend/public/logo/*.webp
 
 # ==============================
 # ===== Misc ===================
