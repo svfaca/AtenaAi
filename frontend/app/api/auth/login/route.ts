@@ -66,7 +66,23 @@ export async function POST(request: NextRequest) {
     const profileImage = backendUser.profile_image || backendUser.avatar_url || null
 
     // 🔥 Extrair tokens do Set-Cookie do backend
-    const setCookieHeaders = response.headers.getSetCookie?.() ?? []
+    // Usar getSetCookie() se disponível (Node 19+), fallback para get('set-cookie')
+    let setCookieHeaders: string[]
+    try {
+      setCookieHeaders = response.headers.getSetCookie?.() ?? []
+    } catch {
+      setCookieHeaders = []
+    }
+    
+    // Fallback para Node 18 (Vercel): parsear manualmente o header Set-Cookie
+    if (setCookieHeaders.length === 0) {
+      const rawSetCookie = response.headers.get('set-cookie')
+      if (rawSetCookie) {
+        // Split por vírgula, mas cuidado com valores que contêm vírgula
+        setCookieHeaders = rawSetCookie.split(/,(?=\s*[a-zA-Z_][a-zA-Z0-9_]*=)/)
+      }
+    }
+    
     console.log('[Auth/Login] Set-Cookie headers from backend:', setCookieHeaders)
     
     let accessTokenFromCookie: string | null = null

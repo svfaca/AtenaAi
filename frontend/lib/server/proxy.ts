@@ -54,7 +54,21 @@ export async function proxy(req: Request, path: string) {
     // 🔥 CRÍTICO: Propagar cookies do backend (access_token, refresh_token)
     // Os route handlers (login, refresh) são responsáveis por recriar os cookies
     // com o domínio correto do frontend. O proxy apenas passa os Set-Cookie adiante.
-    const setCookieHeaders = backendRes.headers.getSetCookie?.() ?? []
+    let setCookieHeaders: string[]
+    try {
+      setCookieHeaders = backendRes.headers.getSetCookie?.() ?? []
+    } catch {
+      setCookieHeaders = []
+    }
+    
+    // Fallback para Node 18 (Vercel)
+    if (setCookieHeaders.length === 0) {
+      const rawSetCookie = backendRes.headers.get('set-cookie')
+      if (rawSetCookie) {
+        setCookieHeaders = rawSetCookie.split(/,(?=\s*[a-zA-Z_][a-zA-Z0-9_]*=)/)
+      }
+    }
+    
     for (const setCookie of setCookieHeaders) {
       if (!responseHeaders['Set-Cookie']) {
         responseHeaders['Set-Cookie'] = setCookie

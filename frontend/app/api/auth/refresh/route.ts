@@ -40,9 +40,24 @@ export async function POST(request: NextRequest) {
     }
 
     // 🔥 Extrair tokens do Set-Cookie do backend
+    // Usar getSetCookie() se disponível (Node 19+), fallback para get('set-cookie')
+    let setCookieHeaders: string[]
+    try {
+      setCookieHeaders = backendRes.headers.getSetCookie?.() ?? []
+    } catch {
+      setCookieHeaders = []
+    }
+    
+    // Fallback para Node 18 (Vercel)
+    if (setCookieHeaders.length === 0) {
+      const rawSetCookie = backendRes.headers.get('set-cookie')
+      if (rawSetCookie) {
+        setCookieHeaders = rawSetCookie.split(/,(?=\s*[a-zA-Z_][a-zA-Z0-9_]*=)/)
+      }
+    }
+    
     let accessTokenFromCookie: string | null = null
     let refreshTokenFromCookie: string | null = null
-    const setCookieHeaders = backendRes.headers.getSetCookie?.() ?? []
     for (const setCookie of setCookieHeaders) {
       const match = setCookie.match(/^([^=]+)=([^;]+)/)
       if (match) {
