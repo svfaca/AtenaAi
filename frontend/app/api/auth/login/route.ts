@@ -101,6 +101,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 🔥 Usar access_token do body do backend (mais confiável que parsear Set-Cookie)
+    const accessTokenFromBody = data.access_token || null
+    
     const result = NextResponse.json({
       user: {
         ...backendUser,
@@ -112,8 +115,8 @@ export async function POST(request: NextRequest) {
         profile_image: profileImage,
       },
       message: data.message || 'Login realizado com sucesso',
-      // 🔥 Token no body para fallback em memória
-      access_token: accessTokenFromCookie,
+      // 🔥 Token no body para fallback em memória (prioridade: body > cookie)
+      access_token: accessTokenFromBody || accessTokenFromCookie,
     })
 
     // 🔥 CRÍTICO: Recriar cookies de autenticação para o domínio do frontend

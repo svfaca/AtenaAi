@@ -276,10 +276,12 @@ def login(
     )
     
     
-    return AuthSuccessResponse(
-        message="Login bem-sucedido. Token definido em cookie HttpOnly.",
-        user=UserResponse.from_orm(user)
-    )
+    # 🔥 Retornar access_token no body também para fallback do frontend
+    return {
+        "message": "Login bem-sucedido. Token definido em cookie HttpOnly.",
+        "user": UserResponse.from_orm(user),
+        "access_token": access_token,
+    }
 
 # ============================
 # 3. VERIFICAR EMAIL
