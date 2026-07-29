@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { LoginRequest } from '@/lib/types/auth'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+let API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+// 🔥 Forçar HTTPS em produção (Railway fornece HTTPS)
+if (API_URL.startsWith('http://')) {
+  API_URL = API_URL.replace('http://', 'https://')
+}
 
 async function parseBackendResponse(response: Response): Promise<{ data: any; rawText: string }> {
   const rawText = await response.text()
