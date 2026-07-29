@@ -45,7 +45,13 @@ export async function api<T = unknown>(
   const isLegacyAuthPath = path.startsWith("/auth/");
   const isLegacyDataPath = path.startsWith("/classrooms") || path.startsWith("/conversations");
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+  const isProduction = typeof window !== 'undefined' && window.location.protocol === 'https:';
+  let baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+  
+  // 🔥 Forçar HTTPS em produção para evitar Mixed Content
+  if (baseUrl && isProduction && baseUrl.startsWith('http://')) {
+    baseUrl = baseUrl.replace('http://', 'https://');
+  }
   
   let apiPath: string;
 
