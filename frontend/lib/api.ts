@@ -79,7 +79,9 @@ export async function api<T = unknown>(
     // Isso evita problemas com proxy que não propaga headers corretamente
     let finalPath = normalizedPath;
     if (memoryToken && baseUrl && (path.startsWith('/api/conversations') || path.startsWith('/api/classrooms'))) {
-      finalPath = `${baseUrl}${path}`;
+      // Converter /api/conversations para /api/v1/conversations (rota do backend)
+      const backendPath = path.replace('/api/', '/api/v1/');
+      finalPath = `${baseUrl}${backendPath}`;
       headers["Authorization"] = `Bearer ${memoryToken}`;
       // Não precisa de credentials include quando chamamos backend direto com Bearer
     } else if (memoryToken) {
