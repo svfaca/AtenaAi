@@ -81,20 +81,12 @@ export async function api<T = unknown>(
         : {}),
     };
 
-    // 🔥 Se temos token em memória, chamar backend DIRETAMENTE em vez de route handler
-    // Isso evita problemas com proxy que não propaga headers corretamente
-    let finalPath = normalizedPath;
-    if (memoryToken && baseUrl && (path.startsWith('/api/conversations') || path.startsWith('/api/classrooms'))) {
-      // Converter /api/conversations para /api/v1/conversations (rota do backend)
-      const backendPath = path.replace('/api/', '/api/v1/');
-      finalPath = `${baseUrl}${backendPath}`;
-      headers["Authorization"] = `Bearer ${memoryToken}`;
-      // Não precisa de credentials include quando chamamos backend direto com Bearer
-    } else if (memoryToken) {
+    // 🔥 Sempre enviar Authorization Bearer se token em memória existir
+    if (memoryToken) {
       headers["Authorization"] = `Bearer ${memoryToken}`;
     }
 
-    const response = await fetch(finalPath, {
+    const response = await fetch(normalizedPath, {
       credentials: "include", // ✅ Inclui HttpOnly cookies automaticamente
       ...options,
       headers,
