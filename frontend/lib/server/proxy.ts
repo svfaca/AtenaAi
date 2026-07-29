@@ -12,6 +12,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
 export async function proxy(req: Request, path: string) {
   try {
     const cookie = req.headers.get('cookie')
+    const authorization = req.headers.get('authorization')
 
     // Preparar headers
     const headers: Record<string, string> = {
@@ -21,6 +22,11 @@ export async function proxy(req: Request, path: string) {
     // Passar cookies para o backend (autenticação)
     if (cookie) {
       headers['cookie'] = cookie
+    }
+
+    // 🔥 Passar Authorization Bearer token se presente (fallback para cookie)
+    if (authorization) {
+      headers['authorization'] = authorization
     }
 
     // Preparar body
@@ -99,14 +105,36 @@ export async function proxyStream(req: Request, path: string) {
       credentials: 'include',
     })
 
+    // Se não for OK, retorna erro como JSON em vez de stream
+    if (!backendRes.ok) {
+      const errorText = await backendRes.text()
+      console.error(`[Proxy Stream] Backend error ${backendRes.status} for ${path}:`, errorText)
+      return NextResponse.json(
+        { error: `Backend error: ${backendRes.status}`, detail: errorText },
+        { status: backendRes.status }
+      )
+    }
+
+    // 🔥 Propagar cookies de resposta (Set-Cookie) do backend para o navegador
+    const responseHeaders: Record<string, string> = {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    }
+
+    const setCookieHeaders = backendRes.headers.getSetCookie?.() ?? []
+    for (const setCookie of setCookieHeaders) {
+      if (!responseHeaders['Set-Cookie']) {
+        responseHeaders['Set-Cookie'] = setCookie
+      } else {
+        responseHeaders['Set-Cookie'] += `, ${setCookie}`
+      }
+    }
+
     // Passar o stream diretamente
     return new NextResponse(backendRes.body, {
       status: backendRes.status,
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
+      headers: responseHeaders,
     })
   } catch (error) {
     console.error(`[Proxy Stream] Error proxying ${req.method} ${path}:`, error)

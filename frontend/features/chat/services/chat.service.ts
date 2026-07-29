@@ -150,6 +150,21 @@ export async function streamConversationMessage(
   text: string,
   onToken: (token: string) => void
 ): Promise<void> {
+  // 🔄 Tenta refresh do token antes de iniciar o stream
+  // Isso garante que o access_token esteja válido para o backend
+  try {
+    const refreshRes = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!refreshRes.ok) {
+      console.warn('[streamConversationMessage] Refresh prévio falhou, tentando mesmo assim:', refreshRes.status);
+    }
+  } catch (e) {
+    console.warn('[streamConversationMessage] Erro no refresh prévio, tentando mesmo assim:', e);
+  }
+
   const response = await fetch(`${CONVERSATIONS_ENDPOINT}/${conversationId}/messages/stream`, {
     method: 'POST',
     credentials: 'include',
@@ -160,6 +175,51 @@ export async function streamConversationMessage(
   });
 
   if (!response.ok) {
+    // 🔄 Se 401, tenta refresh e retry uma vez
+    if (response.status === 401) {
+      console.warn('[streamConversationMessage] 401 recebido, tentando refresh...');
+      try {
+        const refreshRes = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        
+        if (refreshRes.ok) {
+          console.log('[streamConversationMessage] Refresh OK, retrying stream...');
+          const retryResponse = await fetch(`${CONVERSATIONS_ENDPOINT}/${conversationId}/messages/stream`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ text }),
+          });
+
+          if (retryResponse.ok) {
+            // Se o retry funcionou, processa o stream
+            if (!retryResponse.body) {
+              throw new Error('Response body não disponível');
+            }
+            const reader = retryResponse.body.getReader();
+            const decoder = new TextDecoder();
+            try {
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                onToken(decoder.decode(value, { stream: true }));
+              }
+            } finally {
+              reader.releaseLock();
+            }
+            return;
+          }
+        }
+      } catch (refreshError) {
+        console.error('[streamConversationMessage] Refresh falhou:', refreshError);
+      }
+    }
+    
     throw new Error(`Erro ao enviar mensagem: ${response.status}`);
   }
 

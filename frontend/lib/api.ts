@@ -22,6 +22,17 @@
 let isRefreshing = false;
 let refreshPromise: Promise<void> | null = null;
 
+// 🔑 Token store in memory (fallback quando cookies HttpOnly não funcionam)
+let memoryToken: string | null = null;
+
+export function setMemoryToken(token: string | null) {
+  memoryToken = token;
+}
+
+export function getMemoryToken(): string | null {
+  return memoryToken;
+}
+
 export async function api<T = unknown>(
   path: string,
   options: RequestInit = {},
@@ -55,15 +66,22 @@ export async function api<T = unknown>(
       : `/${apiPath}`;
 
   try {
+    // 🔥 Se temos token em memória, enviar como Bearer (fallback para cookie)
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(typeof options.headers === "object"
+        ? (options.headers as Record<string, string>)
+        : {}),
+    };
+
+    if (memoryToken) {
+      headers["Authorization"] = `Bearer ${memoryToken}`;
+    }
+
     const response = await fetch(normalizedPath, {
       credentials: "include", // ✅ Inclui HttpOnly cookies automaticamente
       ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...(typeof options.headers === "object"
-          ? (options.headers as Record<string, string>)
-          : {}),
-      },
+      headers,
     });
 
     const rawText = await response.text();
@@ -135,6 +153,16 @@ export async function refreshAccessToken(): Promise<void> {
 
   if (!response.ok) {
     throw new Error("Falha ao renovar token");
+  }
+
+  // 🔥 Atualizar token em memória se o refresh retornou um novo
+  try {
+    const data = await response.clone().json();
+    if (data.access_token) {
+      setMemoryToken(data.access_token);
+    }
+  } catch {
+    // Ignorar se não conseguir parsear
   }
 }
 

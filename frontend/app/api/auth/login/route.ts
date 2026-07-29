@@ -65,6 +65,26 @@ export async function POST(request: NextRequest) {
     const backendUser = data?.user || {}
     const profileImage = backendUser.profile_image || backendUser.avatar_url || null
 
+    // 🔥 Extrair tokens do Set-Cookie do backend
+    const setCookieHeaders = response.headers.getSetCookie?.() ?? []
+    console.log('[Auth/Login] Set-Cookie headers from backend:', setCookieHeaders)
+    
+    let accessTokenFromCookie: string | null = null
+    let refreshTokenValue: string | null = null
+
+    for (const setCookie of setCookieHeaders) {
+      // Parsear o cookie para extrair nome e valor
+      const match = setCookie.match(/^([^=]+)=([^;]+)/)
+      if (match) {
+        const [, key, value] = match
+        if (key === 'access_token') {
+          accessTokenFromCookie = value
+        } else if (key === 'refresh_token') {
+          refreshTokenValue = value
+        }
+      }
+    }
+
     const result = NextResponse.json({
       user: {
         ...backendUser,
@@ -76,6 +96,8 @@ export async function POST(request: NextRequest) {
         profile_image: profileImage,
       },
       message: data.message || 'Login realizado com sucesso',
+      // 🔥 Token no body para fallback em memória
+      access_token: accessTokenFromCookie,
     })
 
     // 🔥 CRÍTICO: Recriar cookies de autenticação para o domínio do frontend
@@ -91,24 +113,14 @@ export async function POST(request: NextRequest) {
       path: '/',
     }
 
-    // Extrair tokens do Set-Cookie do backend
-    const setCookieHeaders = response.headers.getSetCookie?.() ?? []
-    for (const setCookie of setCookieHeaders) {
-      // Parsear o cookie para extrair nome e valor
-      const match = setCookie.match(/^([^=]+)=([^;]+)/)
-      if (match) {
-        const [, key, value] = match
-        if (key === 'access_token' || key === 'refresh_token') {
-          // Recriar o cookie SEM domain para usar o domínio do frontend
-          result.cookies.set(key, value, cookieOptions)
-        } else {
-          // Para outros cookies, manter o original
-          result.headers.append('Set-Cookie', setCookie)
-        }
-      } else {
-        result.headers.append('Set-Cookie', setCookie)
-      }
+    if (accessTokenFromCookie) {
+      result.cookies.set('access_token', accessTokenFromCookie, cookieOptions)
     }
+    if (refreshTokenValue) {
+      result.cookies.set('refresh_token', refreshTokenValue, cookieOptions)
+    }
+
+    console.log('[Auth/Login] access_token set:', !!accessTokenFromCookie, 'refresh_token set:', !!refreshTokenValue)
 
     return result
   } catch (error) {

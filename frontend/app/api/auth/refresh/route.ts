@@ -1,49 +1,84 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { proxy } from '@/lib/server/proxy'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
 
 export async function POST(request: NextRequest) {
-  const response = await proxy(request, '/api/v1/auth/refresh')
+  try {
+    // Passar cookies do request original para o backend
+    const cookie = request.headers.get('cookie')
 
-  if (!response.ok) {
-    return response
-  }
-
-  const data = await response.json()
-  
-  const result = NextResponse.json(
-    {
-      message: 'Token renovado com sucesso',
-      user: data.user,
-    },
-    { status: 200 }
-  )
-
-  // 🔥 CRÍTICO: Recriar cookies de autenticação para o domínio do frontend
-  // Não podemos copiar cegamente os Set-Cookie do backend porque
-  // cookies com domain do backend não são enviados pelo navegador para o frontend
-  const isProduction = process.env.NODE_ENV === 'production'
-  const cookieOptions = {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: 'lax' as const,
-    path: '/',
-  }
-
-  const setCookieHeaders = response.headers.getSetCookie?.() ?? []
-  for (const setCookie of setCookieHeaders) {
-    const match = setCookie.match(/^([^=]+)=([^;]+)/)
-    if (match) {
-      const [, key, value] = match
-      if (key === 'access_token' || key === 'refresh_token') {
-        // Recriar o cookie SEM domain para usar o domínio do frontend
-        result.cookies.set(key, value, cookieOptions)
-      } else {
-        result.headers.append('Set-Cookie', setCookie)
-      }
-    } else {
-      result.headers.append('Set-Cookie', setCookie)
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
     }
-  }
 
-  return result
+    if (cookie) {
+      headers['cookie'] = cookie
+    }
+
+    const backendRes = await fetch(`${API_URL}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+    })
+
+    const data = await backendRes.json()
+
+    if (!backendRes.ok) {
+      return NextResponse.json(
+        { error: data.detail || 'Falha ao renovar token' },
+        { status: backendRes.status }
+      )
+    }
+
+    // 🔥 CRÍTICO: Recriar cookies de autenticação para o domínio do frontend
+    const isProduction = process.env.NODE_ENV === 'production'
+    const cookieOptions = {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax' as const,
+      path: '/',
+    }
+
+    // 🔥 Extrair tokens do Set-Cookie do backend
+    let accessTokenFromCookie: string | null = null
+    let refreshTokenFromCookie: string | null = null
+    const setCookieHeaders = backendRes.headers.getSetCookie?.() ?? []
+    for (const setCookie of setCookieHeaders) {
+      const match = setCookie.match(/^([^=]+)=([^;]+)/)
+      if (match) {
+        const [, key, value] = match
+        if (key === 'access_token') {
+          accessTokenFromCookie = value
+        } else if (key === 'refresh_token') {
+          refreshTokenFromCookie = value
+        }
+      }
+    }
+
+    const result = NextResponse.json(
+      {
+        message: 'Token renovado com sucesso',
+        user: data.user,
+        // 🔥 Retornar novo access_token para o frontend armazenar em memória
+        access_token: accessTokenFromCookie,
+      },
+      { status: 200 }
+    )
+
+    // Recriar cookies para o domínio do frontend
+    if (accessTokenFromCookie) {
+      result.cookies.set('access_token', accessTokenFromCookie, cookieOptions)
+    }
+    if (refreshTokenFromCookie) {
+      result.cookies.set('refresh_token', refreshTokenFromCookie, cookieOptions)
+    }
+
+    return result
+  } catch (error) {
+    console.error('[Auth/Refresh] Error:', error)
+    return NextResponse.json(
+      { error: 'Serviço de autenticação indisponível' },
+      { status: 502 }
+    )
+  }
 }
