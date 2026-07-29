@@ -15,11 +15,24 @@ export async function GET(
     return NextResponse.json({ error: 'Invalid filename' }, { status: 400 })
   }
 
-  // Caminho do arquivo - process.cwd() no Vercel com rootDirectory: "frontend" aponta para frontend/
-  const logoPath = path.join(process.cwd(), 'public', 'logo', filename)
+  // Tentar múltiplos caminhos
+  const cwd = process.cwd()
+  const possiblePaths = [
+    path.join(cwd, 'public', 'logo', filename),           // rootDirectory = frontend/
+    path.join(cwd, '..', 'public', 'logo', filename),     // rootDirectory = raiz do repo
+    path.join(cwd, 'frontend', 'public', 'logo', filename), // rootDirectory = raiz do repo
+  ]
 
-  if (!fs.existsSync(logoPath)) {
-    console.error(`[Logo Route] File not found: ${logoPath}`)
+  let logoPath: string | null = null
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      logoPath = p
+      break
+    }
+  }
+
+  if (!logoPath) {
+    console.error(`[Logo Route] File not found. cwd=${cwd}, tried:`, possiblePaths)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
