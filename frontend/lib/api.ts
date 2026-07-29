@@ -84,6 +84,9 @@ export async function api<T = unknown>(
     // 🔥 Sempre enviar Authorization Bearer se token em memória existir
     if (memoryToken) {
       headers["Authorization"] = `Bearer ${memoryToken}`;
+      console.log(`[API] Enviando Authorization Bearer para ${path}`);
+    } else {
+      console.log(`[API] Sem memoryToken para ${path}`);
     }
 
     const response = await fetch(normalizedPath, {
