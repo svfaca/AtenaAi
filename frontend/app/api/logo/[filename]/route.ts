@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import path from 'path'
 import fs from 'fs'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ filename: string }> }
@@ -13,24 +15,12 @@ export async function GET(
     return NextResponse.json({ error: 'Invalid filename' }, { status: 400 })
   }
 
-  // Tentar múltiplos caminhos (Vercel pode usar rootDirectory diferente)
-  const possiblePaths = [
-    path.join(process.cwd(), 'public', 'logo', filename),
-    path.join(process.cwd(), 'frontend', 'public', 'logo', filename),
-    path.join(process.cwd(), '..', 'public', 'logo', filename),
-  ]
+  // Caminho do arquivo - process.cwd() no Vercel com rootDirectory: "frontend" aponta para frontend/
+  const logoPath = path.join(process.cwd(), 'public', 'logo', filename)
 
-  let logoPath: string | null = null
-  for (const p of possiblePaths) {
-    if (fs.existsSync(p)) {
-      logoPath = p
-      break
-    }
-  }
-
-  if (!logoPath) {
-    console.error('[Logo Route] File not found. Tried paths:', possiblePaths)
-    return NextResponse.json({ error: 'Not found', tried: possiblePaths }, { status: 404 })
+  if (!fs.existsSync(logoPath)) {
+    console.error(`[Logo Route] File not found: ${logoPath}`)
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   const ext = path.extname(filename).toLowerCase()
