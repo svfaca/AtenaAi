@@ -37,7 +37,7 @@ export default function PublicHeader() {
             alt="AtenaAI"
             width={32}
             height={32}
-            className="mr-2 h-8 w-8 object-contain"
+            className="mr-2 h-8 w-auto object-contain"
           />
           <span className="text-gray-900 dark:text-gray-100">AtenaAI</span>
         </Link>

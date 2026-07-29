@@ -134,8 +134,7 @@ function PublicVariantHeader() {
             alt="AtenaAI"
             width={32}
             height={32}
-            className="mr-2"
-            style={{ width: 'auto', height: 'auto' }}
+            className="mr-2 h-8 w-auto object-contain"
           />
           <span className="text-gray-900 dark:text-gray-100">AtenaAI</span>
         </Link>
