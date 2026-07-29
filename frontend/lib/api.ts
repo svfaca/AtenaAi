@@ -45,11 +45,11 @@ export async function api<T = unknown>(
   const isLegacyAuthPath = path.startsWith("/auth/");
   const isLegacyDataPath = path.startsWith("/classrooms") || path.startsWith("/conversations");
 
-  const isProduction = typeof window !== 'undefined' && window.location.protocol === 'https:';
   let baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
   
-  // 🔥 Forçar HTTPS em produção para evitar Mixed Content
-  if (baseUrl && isProduction && baseUrl.startsWith('http://')) {
+  // 🔥 Forçar HTTPS se a URL for HTTP (Railway fornece HTTPS)
+  // Isso evita Mixed Content quando o frontend está em HTTPS (Vercel)
+  if (baseUrl && baseUrl.startsWith('http://')) {
     baseUrl = baseUrl.replace('http://', 'https://');
   }
   
