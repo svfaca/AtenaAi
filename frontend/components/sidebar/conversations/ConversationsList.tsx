@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useCallback } from 'react'
 import { useChatStore } from '@/stores/useChatStore'
 import SidebarSection from '../SidebarSection'
 import ConversationItem from './ConversationItem'
@@ -35,10 +35,13 @@ export default function ConversationsList({
   const activeConversationId = useChatStore((s) => s.activeConversationId)
   const hydrateConversations = useChatStore((s) => s.hydrateConversations)
 
-  // Carrega conversas na montagem
+  // ✅ Estabiliza a função para evitar re-renders infinitos
+  const stableHydrate = useCallback(() => hydrateConversations(), [hydrateConversations])
+
+  // Carrega conversas na montagem (apenas uma vez)
   useEffect(() => {
-    hydrateConversations()
-  }, [hydrateConversations])
+    stableHydrate()
+  }, [stableHydrate])
 
   return (
     <SidebarSection

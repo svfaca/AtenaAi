@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useChat } from '@/features/chat/hooks'
 import { useAboutModal } from '@/features/about'
 import { useNavigationState } from '@/features/navigation/hooks/useNavigationState'
@@ -38,9 +38,12 @@ export default function ConversationsSidebarSection({
     duplicateConversation,
   } = useChat()
 
+  // ✅ Estabiliza a função para evitar re-renders infinitos
+  const stableHydrate = useCallback(() => hydrateConversations(), [hydrateConversations])
+
   useEffect(() => {
-    void hydrateConversations()
-  }, [hydrateConversations])
+    void stableHydrate()
+  }, [stableHydrate])
 
   const handleNewConversation = async () => {
     closeAbout()
