@@ -4,6 +4,7 @@ import { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import type { Session } from '@/lib/types/auth';
+import { getLogoUrl } from '@/lib/logo';
 
 export default function HeaderTeacher({ session }: { session: Session }) {
   const router = useRouter();
@@ -64,7 +65,7 @@ export default function HeaderTeacher({ session }: { session: Session }) {
       <div className="flex items-center gap-3">
         <a href="/scholar" className="flex items-center gap-2 text-xl font-bold text-slate-900 dark:text-slate-100 hover:opacity-80 transition-opacity">
           <img 
-            src={theme === 'dark' ? '/logo/logo-icon-dark-20260627.png' : '/logo/logo-icon-ligth-20260627.png'}
+            src={getLogoUrl(theme)}
             alt="AtenaAI" 
             className="h-8 w-auto object-contain"
           />

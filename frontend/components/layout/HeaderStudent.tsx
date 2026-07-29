@@ -3,21 +3,18 @@
 import { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { useMobileMenu } from '@/components/context/MobileMenuContext';
 import type { Session } from '@/lib/types/auth';
+import { getLogoUrl } from '@/lib/logo';
 
 export default function HeaderStudent({ session }: { session: Session }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const { toggleMenu } = useMobileMenu();
 
-  // Inicializar tema ao montar
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const initialTheme = (savedTheme || (prefersDark ? 'dark' : 'light')) as 'light' | 'dark';
-    
     setTheme(initialTheme);
     applyTheme(initialTheme);
   }, []);
@@ -51,40 +48,32 @@ export default function HeaderStudent({ session }: { session: Session }) {
     });
   };
 
+  const getInitials = () => {
+    const names = session.name.split(' ');
+    return names
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase();
+  };
+
   return (
     <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex items-center justify-between h-16 shrink-0 z-10">
-      {/* Esquerda: Botão Mobile + Logo */}
       <div className="flex items-center gap-3">
-        {/* Botão menu mobile */}
-        <button
-          onClick={toggleMenu}
-          className="md:hidden p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
-          title="Abrir/fechar menu"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-
-        {/* Logo com imagem */}
         <a href="/scholar" className="flex items-center gap-2 text-xl font-bold text-slate-900 dark:text-slate-100 hover:opacity-80 transition-opacity">
           <img 
-            src={theme === 'dark' ? '/logo/logo-icon-dark-20260627.png' : '/logo/logo-icon-ligth-20260627.png'}
+            src={getLogoUrl(theme)}
             alt="AtenaAI" 
             className="h-8 w-auto object-contain"
           />
           <span className="hidden sm:inline">AtenaAI</span>
         </a>
-
-        {/* Badge Estudante */}
-        <span className="px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full font-medium">
+        <span className="px-2 py-0.5 text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full font-medium">
           Estudante
         </span>
       </div>
 
-      {/* Direita: Toggle Tema + Link Quem Somos + Logout */}
       <div className="flex items-center gap-3">
-        {/* Botão toggle tema */}
         <button
           onClick={toggleTheme}
           className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
@@ -100,23 +89,30 @@ export default function HeaderStudent({ session }: { session: Session }) {
             </svg>
           )}
         </button>
-        {/* Link Quem Somos */}
-        <a
-          href="/"
-          className="hidden md:block text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-        >
-          Quem Somos
-        </a>
 
-        {/* Botão Sair */}
-        <button
-          onClick={handleLogout}
-          disabled={isPending}
-          className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-medium transition-colors"
-          title="Fazer logout"
-        >
-          {isPending ? 'Saindo...' : 'Sair'}
-        </button>
+        <div className="relative group">
+          <button
+            className="w-9 h-9 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-white font-bold text-sm hover:opacity-90 transition-opacity"
+            title="Menu do Estudante"
+          >
+            {getInitials()}
+          </button>
+
+          <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+            <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{session.name}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{session.email}</p>
+            </div>
+
+            <button
+              onClick={handleLogout}
+              disabled={isPending}
+              className="w-full text-left px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+            >
+              {isPending ? 'Saindo...' : 'Sair'}
+            </button>
+          </div>
+        </div>
       </div>
     </header>
   );

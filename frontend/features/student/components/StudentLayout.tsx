@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useThemeMode } from '@/lib/hooks/useThemeMode';
+import { getLogoUrl } from '@/lib/logo';
 import { useUIStore } from '@/stores';
 import { useAuth } from '@/features/auth';
 import { useAboutModal, AboutModal } from '@/features/about';
@@ -86,7 +87,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
 
         <Link href="/" onClick={handleBrandClick} className="flex items-center text-xl font-bold text-gray-900 dark:text-gray-100">
           <Image
-            src={theme === 'dark' ? '/logo/logo-icon-dark-20260627.png' : '/logo/logo-icon-ligth-20260627.png'}
+            src={getLogoUrl(theme)}
             alt="AtenaAI"
             width={32}
             height={32}

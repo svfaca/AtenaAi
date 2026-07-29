@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useAuth, LoginModal, SignupModal } from '@/features/auth'
 import { useThemeMode } from '@/lib/hooks/useThemeMode'
+import { getLogoUrl } from '@/lib/logo'
 
 type AboutHeaderProps = {
   onClose?: () => void
@@ -27,7 +28,7 @@ export default function AboutHeader({ onClose }: AboutHeaderProps) {
         <div className="flex items-center gap-3">
           <Link href="/" className="flex items-center text-xl font-bold">
             <Image
-              src={isDark ? '/logo/logo-icon-dark.png' : '/logo/logo-icon-ligth.png'}
+              src={getLogoUrl(theme)}
               alt="AtenaAI"
               width={32}
               height={32}

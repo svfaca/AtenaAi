@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useThemeMode } from '@/lib/hooks/useThemeMode';
+import { getLogoUrl } from '@/lib/logo';
 import { useAboutModal, AboutModal } from '@/features/about';
 import { useNavigationState } from '@/features/navigation/hooks/useNavigationState';
 import AppShell from '@/shared/layout/AppShell';
@@ -55,7 +56,7 @@ export default function StudentArea({ userName, userAvatar, children }: StudentA
     }
   }, [navigationState.viewType, isMobileSidebarOpen]);
 
-  const logoPath = theme === 'dark' ? '/logo/logo-icon-dark-20260627.png' : '/logo/logo-icon-ligth-20260627.png';
+  const logoPath = getLogoUrl(theme);
 
   return (
     <AppShell

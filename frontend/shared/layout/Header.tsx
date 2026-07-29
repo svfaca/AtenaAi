@@ -9,6 +9,7 @@ import { useThemeMode } from '@/lib/hooks/useThemeMode';
 import { useAboutModal } from '@/features/about';
 import { useNotification } from '@/lib/hooks/useNotification';
 import { useAuth } from '@/features/auth';
+import { getLogoUrl } from '@/lib/logo';
 
 type PublicHeaderProps = {
   variant: 'public';
@@ -129,7 +130,7 @@ function PublicVariantHeader() {
       <div className="flex items-center gap-3">
         <Link href="/" onClick={handleBrandClick} className="flex items-center text-xl font-bold">
           <Image
-            src={isDark ? '/logo/logo-icon-dark.png' : '/logo/logo-icon-ligth.png'}
+            src={getLogoUrl(theme)}
             alt="AtenaAI"
             width={32}
             height={32}
