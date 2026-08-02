@@ -112,13 +112,12 @@ export default function TeacherPageClient({ teacherName }: TeacherPageClientProp
 				</button>
 
 				<Link href="/" onClick={handleBrandClick} className="flex items-center text-xl font-bold text-gray-900 dark:text-gray-100">
-				<Image
+<Image
 						src={getLogoUrl(theme)}
 						alt="AtenaAI"
 						width={32}
 						height={32}
-						className="mr-2"
-						style={{ width: 'auto', height: 'auto' }}
+						className="mr-2 h-8 w-auto object-contain"
 					/>
 					AtenaAI
 				</Link>
