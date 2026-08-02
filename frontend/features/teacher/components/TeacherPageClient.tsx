@@ -14,49 +14,13 @@ import ClassroomPageModal from '@/features/classrooms/components/modals/Classroo
 import SettingsSidebar from '@/features/student/components/SettingsSidebar';
 import AppShell from '@/shared/layout/AppShell';
 import AppSidebar from '@/shared/layout/AppSidebar';
+import SidebarItem from '@/shared/layout/SidebarItem';
 import TeacherHomePanel from './TeacherHomePanel';
 import TeacherIntroModal from './TeacherIntroModal';
 
 type TeacherPageClientProps = {
 	teacherName?: string;
 };
-
-function SidebarItem({
-	label,
-	icon,
-	isCollapsed,
-	isActive = false,
-	isDanger = false,
-	onClick,
-}: {
-	label: string;
-	icon: React.ReactNode;
-	isCollapsed: boolean;
-	isActive?: boolean;
-	isDanger?: boolean;
-	onClick?: () => void;
-}) {
-	const activeStyles = isActive
-		? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-		: '';
-	const dangerStyles = isDanger
-		? 'text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20'
-		: 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700';
-
-	return (
-		<button
-			type="button"
-			onClick={onClick}
-			className={`flex w-full items-center rounded-lg px-3 py-2 text-sm transition ${
-				isCollapsed ? 'justify-center' : 'gap-2'
-			} ${isActive ? activeStyles : dangerStyles}`}
-			title={label}
-		>
-			<span className="h-4 w-4 shrink-0">{icon}</span>
-			<span className={isCollapsed ? 'hidden' : ''}>{label}</span>
-		</button>
-	);
-}
 
 export default function TeacherPageClient({ teacherName }: TeacherPageClientProps) {
 	const { theme, toggleTheme } = useThemeMode();
@@ -143,14 +107,6 @@ export default function TeacherPageClient({ teacherName }: TeacherPageClientProp
 						</svg>
 					)}
 				</button>
-
-				<button
-					onClick={isAboutOpen ? closeAbout : openAbout}
-					className="hidden text-sm font-medium text-gray-600 transition-colors hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 md:block"
-					type="button"
-				>
-					{isAboutOpen ? 'Fechar' : 'Sobre'}
-				</button>
 			</div>
 		</header>
 	);
@@ -205,7 +161,7 @@ export default function TeacherPageClient({ teacherName }: TeacherPageClientProp
 				</div>
 			)}
 			footer={({ isCollapsed }) => (
-				<div className="space-y-2 border-t border-gray-200 p-3 dark:border-gray-700">
+				<div className="space-y-2">
 					<SidebarItem
 						label="Configuracoes"
 						isCollapsed={isCollapsed}

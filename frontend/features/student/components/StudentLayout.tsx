@@ -118,14 +118,6 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
             </svg>
           )}
         </button>
-
-        <button
-          onClick={isAboutOpen ? closeAbout : openAbout}
-          className="hidden text-sm font-medium text-gray-600 transition-colors hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 md:block"
-          type="button"
-        >
-          {isAboutOpen ? 'Fechar' : 'Sobre'}
-        </button>
       </div>
     </header>
   );

@@ -30,6 +30,9 @@ type AppSidebarProps = {
  * - Mobile overlay
  * - NO data fetching
  * - NO business logic
+ * 
+ * Footer styling (border-t, p-3) is applied here so both
+ * student and teacher sidebars share the same look automatically.
  */
 export default function AppSidebar({
   userName,
@@ -41,7 +44,7 @@ export default function AppSidebar({
   isMobileOpen = false,
   onCloseMobile,
 }: AppSidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
 
   useIsomorphicLayoutEffect(() => {
@@ -142,7 +145,13 @@ export default function AppSidebar({
               >
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
-                    d="M4 6h16M4 12h16M4 18h16"
+                    d="M11 19l-7-7 7-7"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                  />
+                  <path
+                    d="M18 19l-7-7 7-7"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
@@ -154,13 +163,13 @@ export default function AppSidebar({
 
           {/* Scrollable content area */}
           <div className="flex-1 overflow-y-auto scrollbar-custom p-3">
-            {/* Pass isCollapsed to children via context if needed,
-                or children can use CSS to handle collapsed state */}
             {typeof content === 'function' ? content({ isCollapsed: isDesktopCollapsed }) : content}
           </div>
 
-          {/* Footer */}
-          {typeof footer === 'function' ? footer({ isCollapsed: isDesktopCollapsed }) : footer}
+          {/* Footer — border + padding applied here for both student & teacher */}
+          <div className="shrink-0 border-t border-gray-200 p-3 dark:border-gray-700">
+            {typeof footer === 'function' ? footer({ isCollapsed: isDesktopCollapsed }) : footer}
+          </div>
         </div>
       </aside>
     </>
