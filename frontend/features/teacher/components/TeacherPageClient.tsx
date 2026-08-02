@@ -127,7 +127,7 @@ export default function TeacherPageClient({ teacherName }: TeacherPageClientProp
 						isCollapsed={isCollapsed}
 						isActive
 						icon={
-							<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg className="h-full w-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l9-9 9 9M5 10v10h14V10" />
 							</svg>
 						}
@@ -136,7 +136,7 @@ export default function TeacherPageClient({ teacherName }: TeacherPageClientProp
 						label="Turma"
 						isCollapsed={isCollapsed}
 						icon={
-							<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg className="h-full w-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h16M4 12h16M4 17h16" />
 							</svg>
 						}
@@ -145,7 +145,7 @@ export default function TeacherPageClient({ teacherName }: TeacherPageClientProp
 						label="Turmas e Atividades"
 						isCollapsed={isCollapsed}
 						icon={
-							<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg className="h-full w-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 11l3 3L22 4M21 12v7a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1h11" />
 							</svg>
 						}
@@ -154,7 +154,7 @@ export default function TeacherPageClient({ teacherName }: TeacherPageClientProp
 						label="Relatorios"
 						isCollapsed={isCollapsed}
 						icon={
-							<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg className="h-full w-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-6m4 6V7m4 10v-3M5 20h14" />
 							</svg>
 						}

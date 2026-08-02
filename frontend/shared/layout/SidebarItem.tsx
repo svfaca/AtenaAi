@@ -42,7 +42,7 @@ export default function SidebarItem({
       } ${isActive ? activeStyles : dangerStyles}`}
       title={label}
     >
-      <span className="h-4 w-4 shrink-0">{icon}</span>
+      <span className="flex h-5 w-5 items-center justify-center shrink-0">{icon}</span>
       <span className={isCollapsed ? 'hidden' : ''}>{label}</span>
     </button>
   )
