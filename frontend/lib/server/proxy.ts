@@ -48,7 +48,6 @@ export async function proxy(req: Request, path: string) {
       headers,
       body,
       credentials: 'include',
-      redirect: 'manual', // 🔥 CRÍTICO: Não seguir redirects (perde Authorization header!)
     })
 
     console.log(`[Proxy] Resposta: ${backendRes.status} ${backendRes.statusText}`)
@@ -56,8 +55,9 @@ export async function proxy(req: Request, path: string) {
     // Ler resposta
     const text = await backendRes.text()
     
-    if (backendRes.status >= 300 && backendRes.status < 400) {
-      console.error(`[Proxy] Recebeu redirect ${backendRes.status} para: ${backendRes.headers.get('location')}`)
+    // Log do corpo em caso de erro para diagnóstico
+    if (!backendRes.ok) {
+      console.error(`[Proxy] ERRO ${backendRes.status}: ${text.substring(0, 200)}`)
     }
 
     // Construir headers da resposta
