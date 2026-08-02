@@ -30,14 +30,12 @@ export default function SidebarContent({
   closeMobile,
 }: SidebarContentProps) {
   return (
-    <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent dark:scrollbar-thumb-gray-600">
-      <div className="space-y-4 p-3">
-        {/* Seção de conversas */}
-        <ConversationsList isCollapsed={isCollapsed} closeMobile={closeMobile} />
+    <div className="space-y-4">
+      {/* Seção de conversas */}
+      <ConversationsList isCollapsed={isCollapsed} closeMobile={closeMobile} />
 
-        {/* Seção de salas/turmas */}
-        <RoomsList isCollapsed={isCollapsed} closeMobile={closeMobile} />
-      </div>
+      {/* Seção de salas/turmas */}
+      <RoomsList isCollapsed={isCollapsed} closeMobile={closeMobile} />
     </div>
   )
 }
