@@ -103,13 +103,39 @@ def register(
             existing_user.delete_scheduled_at = None
             existing_user.hashed_password = hashed_password
 
+            # Atualizar todos os dados com os novos valores fornecidos
+            existing_user.full_name = user.full_name
+            existing_user.nickname = user.nickname
+            existing_user.birth_date = user.birth_date
+            existing_user.gender = user.gender
+            existing_user.interests = normalize_interests(user.interests)
+
+            role = user.role or UserRole.student
+            if BOOTSTRAP_ADMIN_EMAIL and normalized_email == BOOTSTRAP_ADMIN_EMAIL:
+                role = UserRole.admin
+            existing_user.role = role.value
+
             db.add(existing_user)
             db.commit()
             db.refresh(existing_user)
 
+            # Processar imagem de perfil se fornecida
+            if user.profile_image:
+                logger.info(f"[REGISTRO] Processando imagem de perfil para reativação ID={existing_user.id}")
+                profile_image_url = FileService.save_profile_image_from_base64(
+                    user.profile_image,
+                    existing_user.id,
+                    str(request.base_url)
+                )
+                if profile_image_url:
+                    existing_user.profile_image = profile_image_url
+                    db.add(existing_user)
+                    db.commit()
+                    db.refresh(existing_user)
+
             response.headers["X-Account-Reactivated"] = "true"
             logger.info(
-                f"[REGISTRO] Conta reativada com sucesso: ID={existing_user.id}, Email={normalized_email}"
+                f"[REGISTRO] Conta reativada com sucesso: ID={existing_user.id}, Email={normalized_email}, Role={role}"
             )
             return existing_user
 
