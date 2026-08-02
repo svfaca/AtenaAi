@@ -106,7 +106,11 @@ export async function api<T = unknown>(
 
     if (!response.ok) {
       // ✅ REAL REFRESH TOKEN: Se 401, tenta renovar com refresh_token (no máximo 1 vez)
-      if (response.status === 401 && retryCount < MAX_RETRIES) {
+      // 🔒 NÃO tentar refresh para rotas de autenticação (login, signup, refresh)
+      //    401 nessas rotas significa credenciais inválidas, não sessão expirada
+      const isAuthRoute = path === "/api/auth/login" || path === "/api/auth/signup" || path === "/api/auth/refresh";
+      
+      if (response.status === 401 && retryCount < MAX_RETRIES && !isAuthRoute) {
         try {
           // Se já está refreshindo, aguarda a mesma promise
           if (!refreshPromise) {
