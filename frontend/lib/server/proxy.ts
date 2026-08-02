@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+let API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+// 🔥 Forçar HTTPS em produção (Railway fornece HTTPS)
+if (API_URL.startsWith('http://')) {
+  API_URL = API_URL.replace('http://', 'https://')
+}
 
 /**
  * Proxy universal para comunicação com backend
@@ -36,15 +40,25 @@ export async function proxy(req: Request, path: string) {
     }
 
     // Fazer requisição para o backend
-    const backendRes = await fetch(`${API_URL}${path}`, {
+    const backendUrl = `${API_URL}${path}`
+    console.log(`[Proxy] ${req.method} ${backendUrl} | auth header: ${!!headers['authorization']} | cookie: ${!!headers['cookie']}`)
+    
+    const backendRes = await fetch(backendUrl, {
       method: req.method,
       headers,
       body,
       credentials: 'include',
+      redirect: 'manual', // 🔥 CRÍTICO: Não seguir redirects (perde Authorization header!)
     })
+
+    console.log(`[Proxy] Resposta: ${backendRes.status} ${backendRes.statusText}`)
 
     // Ler resposta
     const text = await backendRes.text()
+    
+    if (backendRes.status >= 300 && backendRes.status < 400) {
+      console.error(`[Proxy] Recebeu redirect ${backendRes.status} para: ${backendRes.headers.get('location')}`)
+    }
 
     // Construir headers da resposta
     const responseHeaders: Record<string, string> = {
