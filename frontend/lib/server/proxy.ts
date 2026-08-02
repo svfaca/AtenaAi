@@ -40,15 +40,31 @@ export async function proxy(req: Request, path: string) {
     }
 
     // Fazer requisição para o backend
-    const backendUrl = `${API_URL}${path}`
+    let backendUrl = `${API_URL}${path}`
     console.log(`[Proxy] ${req.method} ${backendUrl} | auth header: ${!!headers['authorization']} | cookie: ${!!headers['cookie']}`)
     
-    const backendRes = await fetch(backendUrl, {
+    // 🔥 CRÍTICO: Não seguir redirects automaticamente (cross-protocol perde Authorization!)
+    let backendRes = await fetch(backendUrl, {
       method: req.method,
       headers,
       body,
       credentials: 'include',
+      redirect: 'manual',
     })
+
+    // 🔄 Tratar redirect 307/308 manualmente, preservando headers de auth
+    if (backendRes.status === 307 || backendRes.status === 308) {
+      const location = backendRes.headers.get('location')
+      if (location) {
+        console.log(`[Proxy] Seguindo redirect ${backendRes.status} para: ${location}`)
+        backendRes = await fetch(location, {
+          method: req.method,
+          headers,
+          body,
+          credentials: 'include',
+        })
+      }
+    }
 
     console.log(`[Proxy] Resposta: ${backendRes.status} ${backendRes.statusText}`)
 
