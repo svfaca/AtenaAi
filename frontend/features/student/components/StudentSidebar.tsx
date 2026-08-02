@@ -87,7 +87,9 @@ export default function StudentSidebar({
       userInitial={userInitial}
       userAvatar={avatarUrl}
       userRole="Estudante"
-      content={<SidebarContent isCollapsed={false} closeMobile={onCloseMobile} />}
+      content={({ isCollapsed }) => (
+        <SidebarContent isCollapsed={isCollapsed} closeMobile={onCloseMobile} />
+      )}
       footer={footerContent}
     />
   )
