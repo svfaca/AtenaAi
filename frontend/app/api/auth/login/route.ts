@@ -107,6 +107,8 @@ export async function POST(request: NextRequest) {
 
     // 🔥 Usar access_token do body do backend (mais confiável que parsear Set-Cookie)
     const accessTokenFromBody = data.access_token || null
+    // 🔥 Token final: prioridade para body (sempre presente), fallback para cookie parseado
+    const finalAccessToken = accessTokenFromBody || accessTokenFromCookie
     
     const result = NextResponse.json({
       user: {
@@ -120,7 +122,7 @@ export async function POST(request: NextRequest) {
       },
       message: data.message || 'Login realizado com sucesso',
       // 🔥 Token no body para fallback em memória (prioridade: body > cookie)
-      access_token: accessTokenFromBody || accessTokenFromCookie,
+      access_token: finalAccessToken,
     })
 
     // 🔥 CRÍTICO: Recriar cookies de autenticação para o domínio do frontend
@@ -134,13 +136,33 @@ export async function POST(request: NextRequest) {
       secure: isProduction,
       sameSite: 'lax' as const,
       path: '/',
+      // 🔒 NÃO definir domain - deixa o browser usar o domínio atual automaticamente
     }
 
-    if (accessTokenFromCookie) {
-      result.cookies.set('access_token', accessTokenFromCookie, cookieOptions)
+    // 🔥 Usar o token do body (mais confiável) para setar o cookie
+    // Fallback para o valor parseado do Set-Cookie se o body não tiver token
+    const cookieTokenValue = accessTokenFromBody || accessTokenFromCookie
+    if (cookieTokenValue) {
+      result.cookies.set('access_token', cookieTokenValue, cookieOptions)
+      console.log('[Auth/Login] Cookie access_token definido com sucesso')
+    } else {
+      console.error('[Auth/Login] ERRO: Nenhum token disponível para definir cookie!')
     }
-    if (refreshTokenValue) {
-      result.cookies.set('refresh_token', refreshTokenValue, cookieOptions)
+    
+    const cookieRefreshValue = data.refresh_token || refreshTokenValue
+    if (cookieRefreshValue) {
+      result.cookies.set('refresh_token', cookieRefreshValue, {
+        ...cookieOptions,
+        maxAge: 7 * 24 * 60 * 60, // 7 dias
+      })
+      console.log('[Auth/Login] Cookie refresh_token definido com sucesso')
+    } else if (refreshTokenValue) {
+      result.cookies.set('refresh_token', refreshTokenValue, {
+        ...cookieOptions,
+        maxAge: 7 * 24 * 60 * 60,
+      })
+    } else {
+      console.warn('[Auth/Login] Aviso: refresh_token não encontrado')
     }
 
     console.log('[Auth/Login] access_token set:', !!accessTokenFromCookie, 'refresh_token set:', !!refreshTokenValue)

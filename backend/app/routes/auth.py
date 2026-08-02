@@ -55,9 +55,10 @@ class StatsResponse(BaseModel):
     pending_requests_count: int
 
 class AuthSuccessResponse(BaseModel):
-    """Resposta de login/refresh bem-sucedida (token NÃO é retornado no body)"""
+    """Resposta de login/refresh bem-sucedida"""
     message: str
     user: UserResponse
+    access_token: Optional[str] = None  # 🔥 Incluído para fallback do frontend (memoryToken)
 
 
 # ============================
@@ -599,10 +600,11 @@ def refresh_token(
         domain=COOKIE_DOMAIN,
     )
     
-    return AuthSuccessResponse(
-        message="Token renovado com sucesso (rotação aplicada)",
-        user=UserResponse.from_orm(user)
-    )
+    return {
+        "message": "Token renovado com sucesso (rotação aplicada)",
+        "user": UserResponse.from_orm(user),
+        "access_token": new_access_token,  # 🔥 Retornar token para fallback do frontend (memoryToken)
+    }
 
 
 # ============================

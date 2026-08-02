@@ -156,6 +156,8 @@ export async function api<T = unknown>(
  * Chamado quando um 401 é recebido
  */
 export async function refreshAccessToken(): Promise<void> {
+  console.log('[refreshAccessToken] Iniciando refresh...')
+  
   const response = await fetch("/api/auth/refresh", {
     method: "POST",
     credentials: "include",
@@ -163,17 +165,21 @@ export async function refreshAccessToken(): Promise<void> {
   });
 
   if (!response.ok) {
+    console.error('[refreshAccessToken] Falhou com status:', response.status)
     throw new Error("Falha ao renovar token");
   }
 
   // 🔥 Atualizar token em memória se o refresh retornou um novo
   try {
-    const data = await response.clone().json();
+    const data = await response.json();
     if (data.access_token) {
       setMemoryToken(data.access_token);
+      console.log('[refreshAccessToken] Token armazenado em memória com sucesso')
+    } else {
+      console.warn('[refreshAccessToken] Resposta não contém access_token:', Object.keys(data))
     }
-  } catch {
-    // Ignorar se não conseguir parsear
+  } catch (e) {
+    console.error('[refreshAccessToken] Erro ao parsear resposta:', e)
   }
 }
 

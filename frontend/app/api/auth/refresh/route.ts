@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+// 🔥 Forçar HTTPS em produção
+let API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+if (API_URL.startsWith('http://')) {
+  API_URL = API_URL.replace('http://', 'https://')
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,32 +19,31 @@ export async function POST(request: NextRequest) {
       headers['cookie'] = cookie
     }
 
+    console.log('[Auth/Refresh] Enviando refresh para backend, cookie presente:', !!cookie)
+
     const backendRes = await fetch(`${API_URL}/api/v1/auth/refresh`, {
       method: 'POST',
       headers,
       credentials: 'include',
     })
 
-    const data = await backendRes.json()
+    const rawText = await backendRes.text()
+    let data: any = {}
+    try {
+      data = rawText ? JSON.parse(rawText) : {}
+    } catch {
+      data = {}
+    }
 
     if (!backendRes.ok) {
+      console.error('[Auth/Refresh] Backend retornou erro:', backendRes.status, rawText)
       return NextResponse.json(
         { error: data.detail || 'Falha ao renovar token' },
         { status: backendRes.status }
       )
     }
 
-    // 🔥 CRÍTICO: Recriar cookies de autenticação para o domínio do frontend
-    const isProduction = process.env.NODE_ENV === 'production'
-    const cookieOptions = {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax' as const,
-      path: '/',
-    }
-
     // 🔥 Extrair tokens do Set-Cookie do backend
-    // Usar getSetCookie() se disponível (Node 19+), fallback para get('set-cookie')
     let setCookieHeaders: string[]
     try {
       setCookieHeaders = backendRes.headers.getSetCookie?.() ?? []
@@ -70,22 +73,46 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 🔥 PREFERIR token do body (backend agora retorna access_token explicitamente)
+    // Fallback para token parseado do Set-Cookie
+    const bodyAccessToken = data.access_token || null
+    const finalAccessToken = bodyAccessToken || accessTokenFromCookie
+
+    console.log('[Auth/Refresh] Token do body:', !!bodyAccessToken, 'Token do cookie:', !!accessTokenFromCookie)
+
+    const isProduction = process.env.NODE_ENV === 'production'
+    const cookieOptions = {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax' as const,
+      path: '/',
+    }
+
     const result = NextResponse.json(
       {
         message: 'Token renovado com sucesso',
         user: data.user,
         // 🔥 Retornar novo access_token para o frontend armazenar em memória
-        access_token: accessTokenFromCookie,
+        access_token: finalAccessToken,
       },
       { status: 200 }
     )
 
     // Recriar cookies para o domínio do frontend
-    if (accessTokenFromCookie) {
-      result.cookies.set('access_token', accessTokenFromCookie, cookieOptions)
+    // Usar token do body como fonte primária para o cookie
+    const cookieTokenValue = bodyAccessToken || accessTokenFromCookie
+    if (cookieTokenValue) {
+      result.cookies.set('access_token', cookieTokenValue, cookieOptions)
+      console.log('[Auth/Refresh] Cookie access_token recriado com sucesso')
     }
-    if (refreshTokenFromCookie) {
-      result.cookies.set('refresh_token', refreshTokenFromCookie, cookieOptions)
+    
+    const cookieRefreshValue = data.refresh_token || refreshTokenFromCookie
+    if (cookieRefreshValue) {
+      result.cookies.set('refresh_token', cookieRefreshValue, {
+        ...cookieOptions,
+        maxAge: 7 * 24 * 60 * 60,
+      })
+      console.log('[Auth/Refresh] Cookie refresh_token recriado com sucesso')
     }
 
     return result
