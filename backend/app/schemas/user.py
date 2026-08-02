@@ -15,6 +15,7 @@ class UserCreate(BaseModel):
     email: str
     password: str
     full_name: str
+    role: Optional[UserRole] = None
 
     nickname: Optional[str] = None
     interests: Optional[Union[List[str], str]] = None

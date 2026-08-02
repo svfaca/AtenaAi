@@ -6,7 +6,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password, name, birthdate, gender, interests } = body
+    const { email, password, name, birthdate, gender, interests, role } = body
 
     const normalizedInterests = normalizeInterestIds(interests)
 
@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
         birth_date: birthdate || null,
         gender: gender || null,
         interests: normalizedInterests,
+        ...(role ? { role } : {}),
       }),
     })
 

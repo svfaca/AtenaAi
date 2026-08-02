@@ -117,10 +117,12 @@ def register(
         logger.info(f"[REGISTRO] Email disponível: {normalized_email}")
 
         # Cria novo usuário com senha hash
-        role = UserRole.student
+        role = user.role or UserRole.student
 
         if BOOTSTRAP_ADMIN_EMAIL and normalized_email == BOOTSTRAP_ADMIN_EMAIL:
             role = UserRole.admin
+
+        logger.info(f"[REGISTRO] Role selecionada: {role}")
 
         new_user = User(
             email=normalized_email,
