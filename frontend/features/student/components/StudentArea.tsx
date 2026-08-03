@@ -152,7 +152,6 @@ export default function StudentArea({ userName, userAvatar, children }: StudentA
               onLogout={handleLogout}
               aboutLabel={isAboutOpen ? 'Fechar' : 'Sobre'}
               onAboutClick={handleAboutClick}
-              version="v0.1.0"
             />
           )}
         />
