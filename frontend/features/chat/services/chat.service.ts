@@ -2,8 +2,6 @@ import type { ChatMessage, PublicChatResponse } from '../types/chat.types';
 import { api } from '@/lib/api';
 import type { Conversation, Message } from '@/lib/types';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://127.0.0.1:8000';
-
 const CONVERSATIONS_ENDPOINT = '/api/conversations';
 
 export type ChatRateLimitError = {
@@ -261,13 +259,15 @@ export async function streamPublicMessage(
   let response: Response;
 
   try {
-    response = await fetch(`${BACKEND_URL}/api/v1/chat/stream`, {
+    // 🔥 Via route handler do Next.js (proxy server-side) — evita CORS no navegador
+    response = await fetch('/api/chat/public/stream', {
       method: 'POST',
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        message: text,
         content: text,
         text,
         history: history.map(msg => ({
