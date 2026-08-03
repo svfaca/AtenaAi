@@ -9,7 +9,7 @@ export function getAPIBaseURL() {
     // Produção centralizada no backend público
     return isLocal
         ? "http://127.0.0.1:8000"
-        : "https://atenaai-api.onrender.com";
+        : "https://web-production-110f3.up.railway.app";
 }
 
 export const API_BASE_URL = getAPIBaseURL();

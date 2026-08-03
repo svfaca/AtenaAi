@@ -693,7 +693,7 @@
         try {
             const token = localStorage.getItem('access_token');
             const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-            const API_URL = isLocal ? 'http://127.0.0.1:8000' : 'https://atenaai-api.onrender.com';
+            const API_URL = isLocal ? 'http://127.0.0.1:8000' : 'https://web-production-110f3.up.railway.app';
             
             const response = await fetch(`${API_URL}/api/v1/classrooms/join`, {
                 method: 'POST',
@@ -732,7 +732,7 @@
         try {
             const token = localStorage.getItem('access_token');
             const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-            const API_URL = isLocal ? 'http://127.0.0.1:8000' : 'https://atenaai-api.onrender.com';
+            const API_URL = isLocal ? 'http://127.0.0.1:8000' : 'https://web-production-110f3.up.railway.app';
             
             console.log('Loading classrooms from:', `${API_URL}/api/v1/classrooms/my`);
             console.log('Token:', token ? 'Present' : 'Missing');
@@ -922,7 +922,7 @@
         try {
             const token = localStorage.getItem('access_token');
             const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-            const API_URL = isLocal ? 'http://127.0.0.1:8000' : 'https://atenaai-api.onrender.com';
+            const API_URL = isLocal ? 'http://127.0.0.1:8000' : 'https://web-production-110f3.up.railway.app';
             
             const response = await fetch(`${API_URL}/api/v1/classrooms/my`, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -1029,7 +1029,7 @@
         try {
             const token = localStorage.getItem('access_token');
             const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-            const API_URL = isLocal ? 'http://127.0.0.1:8000' : 'https://atenaai-api.onrender.com';
+            const API_URL = isLocal ? 'http://127.0.0.1:8000' : 'https://web-production-110f3.up.railway.app';
             
             const response = await fetch(`${API_URL}/api/v1/classrooms/${classroomId}/cancel-request`, {
                 method: 'DELETE',
@@ -1060,7 +1060,7 @@
                 try {
                     const token = localStorage.getItem('access_token');
                     const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-                    const API_URL = isLocal ? 'http://127.0.0.1:8000' : 'https://atenaai-api.onrender.com';
+                    const API_URL = isLocal ? 'http://127.0.0.1:8000' : 'https://web-production-110f3.up.railway.app';
                     
                     const response = await fetch(`${API_URL}/api/v1/classrooms/${classroomId}/leave`, {
                         method: 'DELETE',

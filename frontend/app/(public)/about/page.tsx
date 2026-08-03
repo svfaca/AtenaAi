@@ -35,7 +35,7 @@ const DEFAULT_I18N = {
     emailLabel: 'Email',
     emailAddress: 'savioemmanuelsc@gmail.com',
     githubLabel: 'GitHub',
-    githubUrl: 'https://github.com/svfaca',
+    githubUrl: 'https://github.com/svfaca/AtenaAi',
     linkedinLabel: 'LinkedIn',
     linkedinUrl: 'https://www.linkedin.com/in/savio-emmanuel/',
     websiteLabel: 'Website Pessoal',
