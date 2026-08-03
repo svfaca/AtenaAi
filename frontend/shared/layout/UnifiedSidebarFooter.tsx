@@ -1,1 +1,1 @@
-export { default } from '@/features/student/components/SidebarFooter'
+export { default } from '@/shared/layout/SidebarFooter'

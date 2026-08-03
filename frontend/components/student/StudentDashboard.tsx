@@ -8,11 +8,17 @@
 
 "use client";
 
-import { useScholar } from "@/lib/contexts/ScholarContext";
+import { useChat } from "@/features/chat/hooks";
+import { useNavigationState } from "@/features/navigation/hooks/useNavigationState";
 import { ChatWindow } from "./ChatWindow";
 
 export function StudentDashboard() {
-  const { selectedConversation } = useScholar();
-  
+  const { conversations } = useChat();
+  const { conversationId } = useNavigationState();
+
+  const selectedConversation = conversations.find(
+    (c) => c.id === conversationId
+  ) ?? null;
+
   return <ChatWindow selectedConversation={selectedConversation} />;
 }

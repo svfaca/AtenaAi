@@ -2,15 +2,18 @@
 
 import { useState, useMemo, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useThemeMode } from '@/lib/hooks/useThemeMode';
 import { getLogoUrl } from '@/lib/logo';
 import { useAboutModal, AboutModal } from '@/features/about';
 import { useNavigationState } from '@/features/navigation/hooks/useNavigationState';
+import { useAuth } from '@/features/auth';
 import AppShell from '@/shared/layout/AppShell';
 import AppHeader from '@/shared/layout/AppHeader';
 import AppSidebar from '@/shared/layout/AppSidebar';
-import StudentSidebarContent from '@/features/student/components/StudentSidebarContent';
-import SidebarFooter from '@/features/student/components/SidebarFooter';
+import RoomsSidebarSection from '@/features/classrooms/components/RoomsSidebarSection';
+import ConversationsSidebarSection from '@/features/conversations/components/ConversationsSidebarSection';
+import SidebarFooter from '@/shared/layout/SidebarFooter';
 import SettingsSidebar from '@/features/student/components/SettingsSidebar';
 import MainContent from '@/features/student/components/MainContent';
 
@@ -38,12 +41,26 @@ export default function StudentArea({ userName, userAvatar, children }: StudentA
   const { theme, toggleTheme } = useThemeMode();
   const { isOpen: isAboutOpen, openAbout, closeAbout } = useAboutModal();
   const navigationState = useNavigationState();
+  const { logout } = useAuth();
+  const router = useRouter();
 
   const handleBrandClick = () => {
     if (isAboutOpen) {
       closeAbout();
     }
   };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/');
+    } catch (error) {
+      console.error('[StudentArea] Logout error:', error);
+      router.push('/');
+    }
+  };
+
+  const handleAboutClick = isAboutOpen ? closeAbout : openAbout;
 
   const userInitial = useMemo(() => {
     return userName?.trim()?.charAt(0)?.toUpperCase() || 'U';
@@ -123,12 +140,19 @@ export default function StudentArea({ userName, userAvatar, children }: StudentA
           isMobileOpen={isMobileSidebarOpen}
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
           content={({ isCollapsed }) => (
-            <StudentSidebarContent isCollapsed={isCollapsed} />
+            <>
+              <RoomsSidebarSection isCollapsed={isCollapsed} />
+              <ConversationsSidebarSection isCollapsed={isCollapsed} />
+            </>
           )}
           footer={({ isCollapsed }) => (
             <SidebarFooter
               isCollapsed={isCollapsed}
               onOpenSettings={() => setSettingsOpen(true)}
+              onLogout={handleLogout}
+              aboutLabel={isAboutOpen ? 'Fechar' : 'Sobre'}
+              onAboutClick={handleAboutClick}
+              version="v0.1.0"
             />
           )}
         />
