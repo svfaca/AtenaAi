@@ -159,37 +159,13 @@ async def startup_event():
     logger.info(f"Database: {os.getenv('DATABASE_URL', 'sqlite:///./database.db')}")
     logger.info("=" * 80)
 
-    # Criar todas as tabelas que ainda não existem
-    logger.info("🔄 Criando tabelas no banco de dados...")
-    try:
-        Base.metadata.create_all(bind=engine)
-        logger.info("✅ Tabelas criadas/verificadas com sucesso")
-    except Exception as e:
-        # Ignorar erro de ENUM já existente (ocorre com workers múltiplos)
-        if "duplicate key" in str(e) and "pg_type_typname_nsp_index" in str(e):
-            logger.warning("⚠️ ENUM type já existe (ignorado para multi-worker)")
-        else:
-            logger.error(f"❌ Erro ao criar tabelas: {e}")
-            raise
-    
-    # 🧱 Rodar Alembic migrations ANTES das data migrations
-    logger.info("🔄 Rodando Alembic migrations...")
-    try:
-        import subprocess, sys
-        result = subprocess.run(
-            [sys.executable, "-m", "alembic", "upgrade", "head"],
-            capture_output=True,
-            text=True,
-            cwd="/app" if os.path.exists("/app") else "."
-        )
-        if result.returncode == 0:
-            logger.info("✅ Alembic migrations aplicadas com sucesso")
-        else:
-            logger.error(f"❌ Alembic migration falhou: {result.stderr}")
-    except Exception as e:
-        logger.error(f"❌ Erro ao rodar Alembic: {e}")
-
     db = SessionLocal()
+    try:
+        from app.database.bootstrap import bootstrap_database
+        bootstrap_database(db)
+    except Exception as e:
+        logger.error(f"❌ Erro no bootstrap do banco: {e}")
+    
     try:
         executed = apply_pending_data_migrations(db)
         if executed:
