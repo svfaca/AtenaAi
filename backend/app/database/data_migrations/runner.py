@@ -63,8 +63,15 @@ def apply_pending_data_migrations(db: Session) -> list[tuple[str, str, int]]:
 
         logger.info(f"[data-migration] Executando {version} - {name}")
 
+        # Limpar qualquer transação suja de erros anteriores
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
         try:
             affected_rows = upgrade(db)
+            db.flush()  # Garante que não há erro pós-upgrade
             _mark_as_applied(db, version, name)
             db.commit()
             executed.append((version, name, affected_rows))
@@ -73,7 +80,7 @@ def apply_pending_data_migrations(db: Session) -> list[tuple[str, str, int]]:
             )
         except Exception:
             db.rollback()
-            logger.exception(f"[data-migration] ❌ Falha ao aplicar {version} - {name}")
-            raise
+            logger.exception(f"[data-migration] ❌ Falha ao aplicar {version} - {name} — pulando")
+            continue
 
     return executed
