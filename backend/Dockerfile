@@ -67,5 +67,5 @@ USER appuser
 EXPOSE 8000
 
 # Comando para produção (otimizado)
-# Porta fixa 8000 — o Railway mapeia a porta pública automaticamente via proxy
-CMD uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+# Railway injeta PORT=8080 — uvicorn precisa ouvir na porta 8080
+CMD uvicorn app.main:app --host 0.0.0.0 --port 8080 --workers 4
