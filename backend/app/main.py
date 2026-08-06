@@ -175,9 +175,9 @@ async def startup_event():
     # 🧱 Rodar Alembic migrations ANTES das data migrations
     logger.info("🔄 Rodando Alembic migrations...")
     try:
-        import subprocess
+        import subprocess, sys
         result = subprocess.run(
-            ["alembic", "upgrade", "head"],
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
             capture_output=True,
             text=True,
             cwd="/app" if os.path.exists("/app") else "."
