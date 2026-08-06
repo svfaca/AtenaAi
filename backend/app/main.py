@@ -172,6 +172,23 @@ async def startup_event():
             logger.error(f"❌ Erro ao criar tabelas: {e}")
             raise
     
+    # 🧱 Rodar Alembic migrations ANTES das data migrations
+    logger.info("🔄 Rodando Alembic migrations...")
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["alembic", "upgrade", "head"],
+            capture_output=True,
+            text=True,
+            cwd="/app" if os.path.exists("/app") else "."
+        )
+        if result.returncode == 0:
+            logger.info("✅ Alembic migrations aplicadas com sucesso")
+        else:
+            logger.error(f"❌ Alembic migration falhou: {result.stderr}")
+    except Exception as e:
+        logger.error(f"❌ Erro ao rodar Alembic: {e}")
+
     db = SessionLocal()
     try:
         executed = apply_pending_data_migrations(db)

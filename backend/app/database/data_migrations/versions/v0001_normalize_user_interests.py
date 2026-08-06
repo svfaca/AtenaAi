@@ -8,17 +8,27 @@ from app.utilities.interests import normalize_interests
 
 def upgrade(db: Session) -> int:
     """Normaliza interesses legados de todos os usuários."""
-    users = db.query(User).all()
+    try:
+        users = db.query(User).all()
+    except Exception:
+        # Colunas do modelo podem não existir ainda (ex: role, interests)
+        # Deixa a migration Alembic criar as colunas primeiro
+        return 0
+
     updated_count = 0
 
     for user in users:
         if not user.interests:
             continue
 
-        normalized = normalize_interests(user.interests)
-        if normalized != user.interests:
-            user.interests = normalized
-            updated_count += 1
+        try:
+            normalized = normalize_interests(user.interests)
+            if normalized != user.interests:
+                user.interests = normalized
+                updated_count += 1
+        except Exception:
+            # Pula usuários com dados inválidos
+            continue
 
     return updated_count
 
