@@ -69,10 +69,14 @@ CREATE TABLE IF NOT EXISTS data_migrations (
 
 def bootstrap_database(db: Session) -> None:
     """Executa SQL condicional para adicionar colunas/tabelas ausentes."""
-    try:
-        db.execute(text(BOOTSTRAP_SQL))
-        db.commit()
-        logger.info("✅ Bootstrap do banco de dados executado com sucesso")
-    except Exception as e:
-        db.rollback()
-        logger.warning(f"⚠️ Bootstrap do banco falhou (pode já estar atualizado): {e}")
+    statements = BOOTSTRAP_SQL.strip().split(";")
+    for stmt in statements:
+        stmt = stmt.strip()
+        if not stmt:
+            continue
+        try:
+            db.execute(text(stmt + ";"))
+            db.commit()
+        except Exception:
+            db.rollback()
+    logger.info("✅ Bootstrap do banco de dados executado")
