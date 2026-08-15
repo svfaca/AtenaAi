@@ -175,8 +175,23 @@ export async function proxyStream(req: Request, path: string) {
       }
     }
 
+    // 🔥 CRÍTICO (Next.js/Node runtime): repassar `backendRes.body` (stream undici
+    // do fetch) direto no `NextResponse` lança "Cannot read private member #state
+    // from an object whose class did not declare it". Encaminha o stream por um
+    // TransformStream passthrough para o Next receber um ReadableStream da classe
+    // que ele reconhece. Preserva o streaming token-a-token.
+    const passthrough = new TransformStream()
+    backendRes.body!.pipeTo(passthrough.writable).catch(() => {
+      console.error('[Proxy Stream] Falha ao encaminhar stream do backend')
+      try {
+        passthrough.writable.abort()
+      } catch {
+        // já abortado
+      }
+    })
+
     // Passar o stream diretamente
-    return new NextResponse(backendRes.body, {
+    return new NextResponse(passthrough.readable, {
       status: backendRes.status,
       headers: responseHeaders,
     })
