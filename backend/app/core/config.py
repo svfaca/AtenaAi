@@ -116,7 +116,48 @@ if not OPENAI_API_KEY or OPENAI_API_KEY.strip() == "" or OPENAI_API_KEY == "sk-"
 # DATABASE CONFIG
 # =========================================================
 
-DATABASE_URL = getenv_railway("DATABASE_URL", f"sqlite:///{BASE_DIR / 'database.db'}")
+# Valor bruto (obtido com getenv_railway que corrige bug de \n no Railway)
+_RAW_DATABASE_URL = getenv_railway("DATABASE_URL", "").strip()
+
+# Esquema válido para connection string de banco
+_db_scheme = _RAW_DATABASE_URL.split(":", 1)[0].lower() if _RAW_DATABASE_URL else ""
+_valid_schemes = {"sqlite", "postgres", "postgresql", "mysql", "mariadb", "mysql+pymysql"}
+
+if _RAW_DATABASE_URL and _db_scheme not in _valid_schemes:
+    # DATABASE_URL existe mas não é connection string de banco.
+    # Sintoma comum: apontando para a URL pública do próprio serviço web do Railway.
+    # 🔎 Tenta montar a partir das variáveis do plugin Postgres (PGHOST/PGUSER/...)
+    _pg_host = getenv_railway("PGHOST") or getenv_railway("PGHOSTADDR")
+    _pg_port = getenv_railway("PGPORT") or "5432"
+    _pg_user = getenv_railway("PGUSER")
+    _pg_pass = getenv_railway("PGPASSWORD")
+    _pg_db = getenv_railway("PGDATABASE") or _pg_user
+    _pg_url = getenv_railway("POSTGRES_URL") or getenv_railway("POSTGRESQL_URL")
+
+    if _pg_url:
+        _RAW_DATABASE_URL = _pg_url
+        print(f"🔧 DATABASE_URL inválida ignorada; usando POSTGRES_URL: {repr(_pg_url[:60])}")
+    elif _pg_host and _pg_user and _pg_pass and _pg_db:
+        _RAW_DATABASE_URL = f"postgresql://{_pg_user}:{_pg_pass}@{_pg_host}:{_pg_port}/{_pg_db}"
+        print("🔧 DATABASE_URL inválida ignorada; DATABASE_URL montada da PG* do plugin Postgres.")
+    else:
+        raise ValueError(
+            "⚠️ DATABASE_URL inválida/incorreta no Railway!\n"
+            f"  Valor atual: {repr(_RAW_DATABASE_URL)}\n"
+            "  Não é uma connection string de banco (ex.: 'postgresql://user:pass@host:5432/db').\n"
+            "  Parece estar apontando para a URL pública do serviço web.\n"
+            "  CORRIJA: Service → Variables → DATABASE_URL (ou re-vincule o plugin Postgres)."
+        )
+
+# Normalizar prefixo antigo do Railway
+if _RAW_DATABASE_URL.startswith("postgres://"):
+    _RAW_DATABASE_URL = _RAW_DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+# Default final (se nada foi configurado)
+if not _RAW_DATABASE_URL:
+    _RAW_DATABASE_URL = f"sqlite:///{BASE_DIR / 'database.db'}"
+
+DATABASE_URL = _RAW_DATABASE_URL
 
 # Connection pool settings para melhor performance
 DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "5"))
