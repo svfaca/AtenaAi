@@ -49,14 +49,11 @@ def getenv_railway(key: str, default: str | None = None) -> str | None:
             # Remover '=' do início se existir
             if val.startswith("="):
                 val = val[1:].strip()
-            print(f"🔧 getenv_railway: encontrada '{key}' key={repr(env_key)} valor={repr(val[:60])}")
             if val:
                 return val
             break
-    
-    # 3. Debug: listar chaves similares
-    similar = [f"{repr(k)}={repr(v[:30])}" for k, v in os.environ.items() if key.lower() in k.lower()]
-    print(f"🔍 getenv_railway: '{key}' não encontrada. Chaves similares: {similar}")
+
+    # 3. Retornar default se não encontrar
     return default
 
 # =========================================================
