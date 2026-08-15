@@ -3,6 +3,7 @@ FastAPI Application Factory com Arquitetura Otimizada.
 Inclui middlewares, exception handlers e configuração de alta performance.
 """
 import os
+import re as _re  # usado para redacionar credenciais de DATABASE_URL nos logs
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -156,7 +157,10 @@ async def startup_event():
     logger.info("ATENAAI SERVER INICIADO")
     logger.info(f"Version: {API_VERSION}")
     logger.info(f"CORS Origins: {CORS_ORIGINS}")
-    logger.info(f"Database: {os.getenv('DATABASE_URL', 'sqlite:///./database.db')}")
+    # 🔒 Logar a URL do banco SEM credenciais (não vazar user/senha)
+    _db_url = os.getenv('DATABASE_URL', 'sqlite:///./database.db')
+    _db_masked = _re.sub(r'//[^@/]+@', '//***@', _db_url)
+    logger.info(f"Database: {_db_masked}")
     logger.info("=" * 80)
 
     db = SessionLocal()

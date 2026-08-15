@@ -8,15 +8,10 @@ from dotenv import load_dotenv
 from typing import List
 
 # =========================================================
-# DEBUG: Listar TODAS as variáveis de ambiente no startup
+# NOTA: NÃO imprimir segredos/valores de env vars aqui.
+# O bloco antigo de DEBUG vazava OPENAI_API_KEY e DATABASE_URL
+# nos logs de deploy e causava rate-limit no Railway (spam).
 # =========================================================
-print("=" * 60)
-print("🔍 DEBUG - TODAS AS VARIÁVEIS DE AMBIENTE:")
-for k, v in sorted(os.environ.items()):
-    # Mostrar apenas primeiros 50 chars do valor por segurança
-    val_preview = repr(v[:50]) if v else "None"
-    print(f"  {repr(k)} = {val_preview}")
-print("=" * 60)
 
 # =========================================================
 # BASE DIR & ENV LOAD
