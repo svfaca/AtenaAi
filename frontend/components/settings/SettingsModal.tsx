@@ -187,7 +187,7 @@ export function SettingsModal({ isOpen, onClose }: {
         submitData.set("profile_image", fileInput.files[0]);
       }
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+      const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "https://web-production-110f3.up.railway.app";
 
       const res = await fetch(`${apiUrl}/api/v1/auth/update-profile`, {
         method: "PUT",
@@ -230,7 +230,7 @@ export function SettingsModal({ isOpen, onClose }: {
     setError(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+      const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "https://web-production-110f3.up.railway.app";
 
       const res = await fetch(`${apiUrl}/api/v1/auth/delete-account`, {
         method: "DELETE",

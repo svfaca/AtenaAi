@@ -8,7 +8,7 @@
 import { cookies } from 'next/headers';
 import type { Classroom, ConversationsResponse, Message } from "./types";
 
-const API_BASE_URL = process.env.BACKEND_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.BACKEND_URL || "https://web-production-110f3.up.railway.app";
 
 interface ApiResponse<T> {
   data: T;

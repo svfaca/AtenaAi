@@ -3,7 +3,7 @@
  * Usa fetch e herda cookies automaticamente
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-110f3.up.railway.app';
 
 /**
  * Fetch wrapper que automaticamente adiciona credentials, headers padrão e trata erros

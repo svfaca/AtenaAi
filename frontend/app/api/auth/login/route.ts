@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { LoginRequest } from '@/lib/types/auth'
 
-let API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+let API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-110f3.up.railway.app'
 // 🔥 Forçar HTTPS em produção (Railway fornece HTTPS)
 if (API_URL.startsWith('http://')) {
   API_URL = API_URL.replace('http://', 'https://')

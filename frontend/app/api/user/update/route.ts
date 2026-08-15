@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-110f3.up.railway.app'
 
 async function updateProfile(req: NextRequest) {
   const formData = await req.formData()

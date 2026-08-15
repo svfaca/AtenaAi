@@ -2,7 +2,7 @@
  * Cliente HTTP e funções de API
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-110f3.up.railway.app';
 
 function resolveUrl(path: string): string {
   // Keep App Router API routes on the same origin (e.g. /api/conversations -> localhost:3000).
