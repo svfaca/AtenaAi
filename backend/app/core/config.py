@@ -150,8 +150,23 @@ if not _RAW_DATABASE_URL or _db_scheme not in _valid_schemes:
 if _RAW_DATABASE_URL.startswith("postgres://"):
     _RAW_DATABASE_URL = _RAW_DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# Default final (se nada foi configurado) -> SQLite local (dev)
+# Default final (se nada foi configurado)
 if not _RAW_DATABASE_URL:
+    if IS_PRODUCTION:
+        # 🔴 Em produção NÃO pode cair em SQLite silenciosamente.
+        # Falha com mensagem clara apontando exatamente o que corrigir.
+        raise ValueError(
+            "❌ DATABASE_URL não configurada em produção!\n"
+            "  O serviço web NÃO recebeu a connection string do Postgres.\n"
+            "  Verifique:\n"
+            "  1) Existe uma Shared Variable DATABASE_URL (Project Settings → Shared Variables)\n"
+            "     criada a partir do Postgres (⋮ → Promote to shared variable)?\n"
+            "  2) No serviço web: apague as DATABASE_URL/POSTGRES_URL vazias e adicione a shared\n"
+            "     ('Add All' / '+ Add Variable Reference' → shared DATABASE_URL).\n"
+            "  3) Como último recurso: cole em DATABASE_URL a Connection URL do\n"
+            "     Postgres → menu '…'/'Connect' (Private Network)."
+        )
+    # Apenas desenvolvimento
     _RAW_DATABASE_URL = f"sqlite:///{BASE_DIR / 'database.db'}"
 
 DATABASE_URL = _RAW_DATABASE_URL
