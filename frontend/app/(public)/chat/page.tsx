@@ -14,7 +14,7 @@ interface Message {
 
 const INITIAL_MESSAGE: Message = {
   id: '0',
-  content: '<strong>Olá! Eu sou a AtenaAI.</strong> Como posso ajudar nos seus estudos hoje?',
+  content: 'Ola! Eu sou a AtenaAI. Como posso ajudar nos seus estudos hoje?',
   isUser: false,
   timestamp: new Date(),
 };

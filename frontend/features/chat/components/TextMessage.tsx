@@ -1,8 +1,6 @@
 ﻿'use client';
 
-import ReactMarkdown from 'react-markdown';
-import rehypeSanitize from 'rehype-sanitize';
-import remarkGfm from 'remark-gfm';
+import MarkdownContent from './MarkdownContent';
 
 type TextMessageProps = {
   content: string;
@@ -11,28 +9,25 @@ type TextMessageProps = {
   status?: 'sending' | 'streaming' | 'done' | 'error';
 };
 
+// Reconhece a apresentação da AtenaAI (aceita "Ola!" ou "Olá!") para exibi-la em negrito
+const INTRO_PATTERN = /^Ol[áa]!?\s+Eu\s+sou\s+a\s+AtenaAI\.?\s*/i;
+
+function extractIntro(content: string): { intro: string; rest: string } {
+  const match = content.match(INTRO_PATTERN);
+  if (!match) return { intro: '', rest: content };
+  return { intro: match[0].trim(), rest: content.slice(match[0].length) };
+}
+
 export default function TextMessage({ content, role, strongIntro = false, status }: TextMessageProps) {
   const isUser = role === 'user';
 
-  // 🔄 Mostra animação de "..." enquanto o assistant ainda não recebeu o primeiro token
-  // (conteúdo vazio + status de stream em andamento ou sem status informado)
+  // Remove espaços sobrando das bordas para o texto colar no balão
+  const cleanContent = content.trim();
+
+  // Mostra animação de "..." enquanto o assistant ainda não recebeu o primeiro token
   const showTypingDots =
-    !isUser &&
-    content.trim().length === 0 &&
-    (status === 'streaming' || status === undefined);
-  const markdownClasses =
-    'text-sm leading-relaxed break-words [&_p]:my-0 [&_h1]:mb-2 [&_h1]:mt-3 [&_h1]:text-lg [&_h1]:font-semibold [&_h2]:mb-2 [&_h2]:mt-3 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:mb-1 [&_h3]:mt-2 [&_h3]:text-sm [&_h3]:font-semibold [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-slate-900/90 [&_pre]:p-3 [&_pre]:text-slate-100 [&_code]:rounded [&_code]:bg-black/10 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[0.9em]';
+    !isUser && cleanContent.length === 0 && (status === 'streaming' || status === undefined);
 
-  // Detecta se há pontinhos de carregamento no final
-  const hasLoadingDots = content.trimEnd().endsWith('...');
-  let displayContent = content;
-  let contentWithoutDots = content;
-
-  if (hasLoadingDots) {
-    contentWithoutDots = content.trimEnd().slice(0, -3).trimEnd();
-  }
-
-  // 🔄 Balão vazio (stream ainda não começou) → animação de "..." no lugar do texto
   if (showTypingDots) {
     return (
       <div className="message bg-gray-100 dark:bg-gray-800 p-4 rounded-lg shadow-sm text-gray-800 dark:text-gray-200">
@@ -45,25 +40,17 @@ export default function TextMessage({ content, role, strongIntro = false, status
     );
   }
 
+  // Durante o stream, o backend pode emitir "..." como placeholder antes do conteúdo real
+  const hasLoadingDots = cleanContent.endsWith('...');
+  const contentWithoutDots = hasLoadingDots ? cleanContent.slice(0, -3).trimEnd() : cleanContent;
+
   if (strongIntro) {
-    const intro = 'Ola! Eu sou a AtenaAI.';
-    const rest = displayContent.replace(intro, '').trimStart();
+    const { intro, rest } = extractIntro(cleanContent);
 
     return (
       <div className="message bg-gray-100 dark:bg-gray-800 p-4 rounded-lg shadow-sm text-gray-800 dark:text-gray-200">
-        <div className="m-0">
-          <strong>{intro}</strong>
-          {rest ? (
-            <>
-              <br />
-              <div className={markdownClasses}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
-                  {rest}
-                </ReactMarkdown>
-              </div>
-            </>
-          ) : null}
-        </div>
+        {intro && <strong className="mb-1 block">{intro}</strong>}
+        {rest ? <MarkdownContent content={rest} className={intro ? 'mt-1' : undefined} /> : null}
       </div>
     );
   }
@@ -77,22 +64,12 @@ export default function TextMessage({ content, role, strongIntro = false, status
       }`}
     >
       {isUser ? (
-        <p className="m-0 text-sm leading-relaxed whitespace-pre-wrap break-words">{displayContent}</p>
+        <p className="m-0 text-sm leading-relaxed whitespace-pre-wrap break-words">{cleanContent}</p>
       ) : (
-        <div className={markdownClasses}>
-          {hasLoadingDots ? (
-            <div>
-              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
-                {contentWithoutDots}
-              </ReactMarkdown>
-              <span className="loading-dots"> ...</span>
-            </div>
-          ) : (
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
-              {displayContent}
-            </ReactMarkdown>
-          )}
-        </div>
+        <MarkdownContent
+          content={hasLoadingDots ? contentWithoutDots : cleanContent}
+          suffix={hasLoadingDots ? <span className="loading-dots"> ...</span> : undefined}
+        />
       )}
     </div>
   );

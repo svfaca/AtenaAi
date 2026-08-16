@@ -27,6 +27,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
+import MarkdownContent from '@/features/chat/components/MarkdownContent';
 
 type ClassroomPageModalProps = {
   classroom: {
@@ -629,8 +630,13 @@ const ChatMessage = memo(function ChatMessage({
                 </button>
               </div>
             </div>
+          ) : isAi ? (
+            <MarkdownContent
+              content={message.content.trim()}
+              className={`${message.showMeta ? 'mt-1' : 'mt-0.5'} text-blue-50`}
+            />
           ) : (
-            <p className={`${message.showMeta ? 'mt-1' : 'mt-0.5'} whitespace-pre-wrap text-sm leading-relaxed ${isAi ? 'text-blue-50' : 'text-slate-200'}`}>
+            <p className={`${message.showMeta ? 'mt-1' : 'mt-0.5'} whitespace-pre-wrap text-sm leading-relaxed text-slate-200`}>
               {message.content}
             </p>
           )}

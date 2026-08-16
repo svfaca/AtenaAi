@@ -48,14 +48,14 @@ export default function MessageList({ messages, isLoading = false }: MessageList
       ref={containerRef}
       id="messages-container"
       onScroll={updateAutoScroll}
-      className="chat-container flex-1 overflow-y-auto flex flex-col gap-6 p-4 w-full"
+      className="chat-container flex-1 overflow-y-auto flex flex-col gap-4 p-4 w-full"
     >
       {messages.length === 0 ? (
         <div className="flex items-start">
           <TextMessage content={welcomeMessage} role="assistant" strongIntro />
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Initial Message */}
           <div className="flex items-start">
             <TextMessage content={welcomeMessage} role="assistant" strongIntro />

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import TextMessage from '@/features/chat/components/TextMessage';
 
 interface Message {
   id: string;
@@ -24,42 +25,32 @@ export function ChatContainer({ messages }: ChatContainerProps) {
   }, [messages]);
 
   return (
-    <div 
+    <div
       ref={containerRef}
-      className="chat-container flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6"
+      className="chat-container flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4"
       style={{
         scrollBehavior: 'smooth',
       }}
     >
       {messages.length === 0 ? (
         <div className="flex items-start">
-          <div className="message bg-gray-100 dark:bg-gray-800 p-4 rounded-lg shadow-sm max-w-85">
-            <p className="m-0">
-              <strong>Olá! Eu sou a AtenaAI.</strong> Como posso ajudar nos seus estudos hoje?
-            </p>
-          </div>
+          <TextMessage
+            content="Ola! Eu sou a AtenaAI. Como posso ajudar nos seus estudos hoje?"
+            role="assistant"
+            strongIntro
+          />
         </div>
       ) : (
         messages.map((msg) => (
-          <div 
-            key={msg.id} 
+          <div
+            key={msg.id}
             className={`flex ${msg.isUser ? 'justify-end' : 'items-start'}`}
           >
-            <div 
-              className={`message max-w-85 animate-fadeIn word-break break-word overflow-wrap break-word ${
-                msg.isUser
-                  ? 'bg-blue-600 text-white rounded-lg p-4 shadow-sm'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-4 shadow-sm'
-              }`}
-            >
-              <div 
-                className="whitespace-pre-wrap"
-                dangerouslySetInnerHTML={{ __html: msg.content }}
-              />
-            </div>
+            <TextMessage content={msg.content} role={msg.isUser ? 'user' : 'assistant'} />
           </div>
         ))
       )}
     </div>
   );
 }
+
