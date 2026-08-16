@@ -7,3 +7,4 @@ from app.models.classroom_member import ClassroomMember, ClassroomMemberRole  # 
 from app.models.student_report import StudentReport  # noqa: F401
 from app.models.notification import Notification  # noqa: F401
 from app.models.group_message import GroupMessage  # noqa: F401
+from app.models.guest_chat_usage import GuestChatUsage  # noqa: F401

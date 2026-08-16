@@ -1,14 +1,19 @@
-fastapi>=0.104.1
-uvicorn[standard]>=0.24.0
-websockets>=12.0
-openai>=1.3.5
-pydantic>=2.5.0
-sqlalchemy>=2.0.23
-psycopg2-binary>=2.9.9  # PostgreSQL driver (needed for Docker)
-alembic>=1.13.0  # Database migrations
-python-jose[cryptography]>=3.3.0
-bcrypt>=4.1.1
-python-multipart>=0.0.6
-python-dotenv>=1.0.0
-python-json-logger>=2.0.7
-email-validator>=2.1.0
+# ============================================================
+# Dependências PINADAS (==) — reprodutibilidade + supply chain.
+# Atualize DE PROPÓSITO (pip install <pkg>==<nova> && rode os testes).
+# O CI roda pip-audit/npm audit para avisar CVEs nas versões pinadas.
+# ============================================================
+fastapi==0.128.0
+uvicorn[standard]==0.40.0
+websockets==16.0
+openai==2.14.0
+pydantic==2.12.5
+sqlalchemy==2.0.45
+psycopg2-binary==2.9.12  # PostgreSQL driver (needed for Docker)
+alembic==1.18.4  # Database migrations
+python-jose[cryptography]==3.5.0
+bcrypt==5.0.0
+python-multipart==0.0.21
+python-dotenv==1.2.1
+python-json-logger==4.0.0
+email-validator==2.3.0

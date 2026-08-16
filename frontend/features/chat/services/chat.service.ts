@@ -39,11 +39,12 @@ async function handleResponse(res: Response) {
       const data = JSON.parse(text);
 
       if (res.status === 429) {
+        const detail = data?.detail && typeof data.detail === 'object' ? data.detail : data;
         throw {
           type: 'RATE_LIMIT',
-          message: data.error,
-          remaining: data.remaining,
-          resetInSeconds: Number(data.resetInSeconds) || 0,
+          message: detail.error || data.error,
+          remaining: detail.remaining ?? data.remaining,
+          resetInSeconds: Number(detail.resetInSeconds ?? data.resetInSeconds) || 0,
         } as ChatRateLimitError;
       }
     } catch (parseOrRateLimitError) {
@@ -86,11 +87,6 @@ export async function sendPublicMessageWithHistory(
   if (!message.trim()) {
     throw new Error("Mensagem vazia");
   }
-
-  console.log("PAYLOAD ENVIADO:", {
-    text: message,
-    history,
-  });
 
   const res = await fetch('/api/chat/public', {
     method: 'POST',
@@ -302,11 +298,12 @@ export async function streamPublicMessage(
     if (status === 429) {
       try {
         const errorData = await response.json();
+        const detail = errorData?.detail && typeof errorData.detail === 'object' ? errorData.detail : errorData;
         throw {
           type: 'RATE_LIMIT',
-          message: errorData.error,
-          remaining: errorData.remaining,
-          resetInSeconds: Number(errorData.resetInSeconds) || 0,
+          message: detail.error || errorData.error,
+          remaining: detail.remaining ?? errorData.remaining,
+          resetInSeconds: Number(detail.resetInSeconds ?? errorData.resetInSeconds) || 0,
         } as ChatRateLimitError;
       } catch (parseError) {
         if ((parseError as Partial<ChatRateLimitError>)?.type === 'RATE_LIMIT') {

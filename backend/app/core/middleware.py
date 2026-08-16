@@ -10,7 +10,27 @@ from typing import Callable
 
 from app.core.logger import logger, log_api_call, log_error
 from app.core.cache import rate_limiter
-from app.core.config import ENVIRONMENT, DEV_LOGIN_RATE_LIMIT_FALLBACK
+from app.core.config import ENVIRONMENT, DEV_LOGIN_RATE_LIMIT_FALLBACK, TRUSTED_PROXY_IPS
+
+# ===================================================================
+# HELPERS
+# ===================================================================
+
+def get_client_ip(request: Request) -> str:
+    """
+    IP real do cliente.
+
+    Confia em X-Forwarded-For APENAS quando o peer (request.client.host) está
+    na lista TRUSTED_PROXY_IPS — caso contrário o header pode ser forjado por
+    qualquer cliente. Com proxy vazio, retorna o peer (comportamento atual).
+    """
+    peer = (request.client.host if request.client else "") or ""
+    if peer in TRUSTED_PROXY_IPS:
+        xff = request.headers.get("x-forwarded-for", "")
+        first = xff.split(",")[0].strip() if xff else ""
+        if first:
+            return first
+    return peer
 
 # ===================================================================
 # MIDDLEWARE DE LOGGING E PERFORMANCE
@@ -22,18 +42,10 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         request_id = str(uuid.uuid4())[:8]
         request.state.request_id = request_id
-        
-        # Extrair user_id do token se disponível
+
+        # Extração de usuário autenticado fica com a dependency get_current_user
+        # (decodificar JWT aqui duplicaria a lógica sem ganho de segurança).
         user_id = None
-        try:
-            # Tentar extrair do header Authorization
-            auth = request.headers.get("Authorization", "")
-            if auth.startswith("Bearer "):
-                # Aqui você poderia decodificar o token se necessário
-                pass
-        except:
-            pass
-        
         request.state.user_id = user_id
         
         # Medir tempo
@@ -70,8 +82,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     
     # Endpoints que não sofrem rate limit
     EXEMPT_PATHS = {
-        "/api/v1/auth/register",
-        "/api/v1/auth/check-email",
         "/api/v1/chat/",  # Chat route handles its own rate limiting
         "/docs",
         "/openapi.json"
@@ -79,7 +89,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     
     # Limites por tipo de endpoint (ordem: mais específico primeiro)
     LIMITS = [
-        ("/api/v1/auth/login", 10, 900),   # 10 por 15 min
+        ("/api/v1/auth/login", 10, 900),      # 10 por 15 min
+        ("/api/v1/auth/register", 10, 3600),  # 10 por hora (contra spam de contas/bcrypt DoS)
         ("/api/v1/chat/", 30, 60),          # 30 por minuto
         ("/api/v1/group-chat/", 60, 60),    # 60 por minuto
         ("/api/v1/conversations/", 60, 60), # 60 por minuto
@@ -90,7 +101,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     @staticmethod
     def _is_local_request(request: Request) -> bool:
         host = (request.client.host if request.client else "") or ""
-        return host in {"127.0.0.1", "::1", "localhost"}
+        # "testclient" é o host usado pelo Starlette TestClient (testes automatizados)
+        return host in {"127.0.0.1", "::1", "localhost", "testclient"}
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Não limita rotas que retornam assets
@@ -107,7 +119,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if user_id:
             rate_key_prefix = f"user:{user_id}"
         else:
-            rate_key_prefix = f"ip:{request.client.host}"
+            # 🔒 Usa o IP real (X-Forwarded-For apenas de proxy confiável)
+            rate_key_prefix = f"ip:{get_client_ip(request)}"
         
         # Encontrar limite aplicável (mais específico primeiro)
         max_requests, window = self.DEFAULT_LIMIT
@@ -152,6 +165,68 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 # ===================================================================
+# MIDDLEWARE DE PROTEÇÃO CSRF (verificação de Origin)
+# ===================================================================
+
+class CSRFProtectionMiddleware(BaseHTTPMiddleware):
+    """
+    Defesa em profundidade contra CSRF (além do SameSite=Lax dos cookies):
+    mutações (POST/PUT/PATCH/DELETE) em /api/v1/* exigem Origin (ou Referer)
+    de uma origem permitida — quando o header estiver presente.
+
+    Requests SEM Origin/Referer (clientes server-to-server, curl, testes)
+    são permitidos: a proteção cobre navegadores, que SEMPRE enviam Origin
+    em mutações cross-site.
+    """
+
+    SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+
+    def __init__(self, app, allowed_origins=None):
+        super().__init__(app)
+        from app.core.config import CORS_ORIGINS
+
+        self.allowed_origins = {
+            (origin or "").rstrip("/") for origin in (allowed_origins or CORS_ORIGINS)
+        }
+
+    @staticmethod
+    def _extract_origin(request: Request) -> str:
+        """Prioriza Origin; cai para Referer quando Origin ausente."""
+        origin = (request.headers.get("origin") or "").rstrip("/")
+        if origin:
+            return origin
+        referer = request.headers.get("referer")
+        if referer:
+            try:
+                from urllib.parse import urlparse
+
+                parsed = urlparse(referer)
+                return f"{parsed.scheme}://{parsed.netloc}"
+            except Exception:
+                return ""
+        return ""
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        if (
+            request.method not in self.SAFE_METHODS
+            and request.url.path.startswith("/api/v1")
+        ):
+            origin = self._extract_origin(request)
+            if origin and origin not in self.allowed_origins:
+                logger.warning(
+                    f"[CSRF] Rejeitado {request.method} {request.url.path} "
+                    f"com origem não permitida: {origin}"
+                )
+                from fastapi.responses import JSONResponse
+
+                return JSONResponse(
+                    content={"detail": "Origem não permitida"},
+                    status_code=403,
+                )
+        return await call_next(request)
+
+
+# ===================================================================
 # MIDDLEWARE DE SEGURANÇA
 # ===================================================================
 
@@ -160,6 +235,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         response = await call_next(request)
+        
+        # 🔒 API nunca deve ser cacheada pelo navegador/proxy intermediário
+        # (evita que dados autenticados fiquem em cache compartilhado).
+        if request.url.path.startswith("/api/v1"):
+            response.headers["Cache-Control"] = "no-store"
         
         # Headers essenciais de segurança
         response.headers["X-Content-Type-Options"] = "nosniff"

@@ -85,6 +85,37 @@ export async function POST(request: NextRequest) {
     const response = await proxy(proxyRequest, '/api/v1/chat/')
     const rate = readRateLimitHeaders(response)
 
+    // 🔒 Propagar erros do backend (ex.: 429 GUEST_DAILY_LIMIT) para o client,
+    // que exibe o CTA de criação de conta quando o limite diário é atingido.
+    if (!response.ok) {
+      let errorData: any = {}
+      try {
+        errorData = await response.json()
+      } catch {
+        errorData = {}
+      }
+
+      const detail = errorData?.detail
+      const rateLimitDetail = detail && typeof detail === 'object' ? detail : errorData
+
+      return NextResponse.json(
+        {
+          error:
+            rateLimitDetail?.error ||
+            errorData?.error ||
+            errorData?.detail ||
+            `Erro ao processar mensagem (${response.status})`,
+          remaining: rateLimitDetail?.remaining ?? rate.remaining,
+          resetInSeconds: rateLimitDetail?.resetInSeconds ?? rate.resetInSeconds,
+          error_code: rateLimitDetail?.error_code || errorData?.error_code || undefined,
+        },
+        {
+          status: response.status,
+          headers: withRateHeaders(undefined, rate),
+        }
+      )
+    }
+
     // Extract data from response
     const data = await response.json()
 

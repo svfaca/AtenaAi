@@ -60,7 +60,7 @@ class Validator:
             raise ValidationError(f"Email inválido: {str(e)}")
     
     @staticmethod
-    def password(password: str, min_length: int = 6) -> str:
+    def password(password: str, min_length: int = 8) -> str:
         """Valida senha"""
         if not password or len(password) < min_length:
             raise ValidationError(f"Senha deve ter no mínimo {min_length} caracteres")

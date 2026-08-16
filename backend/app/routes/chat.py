@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.cache import rate_limiter
-from app.core.config import GUEST_RATE_LIMIT, MAX_INPUT_LENGTH, MAX_MESSAGE_HISTORY, USER_RATE_LIMIT
+from app.core.config import GUEST_DAILY_MESSAGE_LIMIT, IS_PRODUCTION, MAX_INPUT_LENGTH, MAX_MESSAGE_HISTORY, USER_RATE_LIMIT
 from app.core.dependencies import get_current_user_optional
 from app.core.logger import log_error
 from app.database.database import get_db
@@ -19,6 +19,13 @@ from app.models.user import User
 from app.schemas.chat import MessageCreate
 from app.services.ai_service import generate_ai_response, generate_ai_response_stream
 from app.services.chat_service import get_or_create_conversation
+from app.services.guest_limits import (
+    build_guest_cookie_header,
+    get_guest_usage,
+    increment_guest_usage,
+    resolve_guest_identity,
+    seconds_until_midnight,
+)
 from app.services.memory_service import get_memory_service
 from app.utilities.interests import parse_interests
 
@@ -44,6 +51,65 @@ def _build_rate_limit_headers(rate_key: str, max_requests: int, window: int) -> 
         "X-RateLimit-Remaining": str(remaining),
         "X-RateLimit-Reset": str(reset_in_seconds),
     }
+
+
+def _apply_rate_limit(
+    request: Request,
+    db: Session,
+    current_user: Optional[User],
+) -> tuple[dict, Optional[str]]:
+    """
+    Aplica rate limit conforme o tipo de usuário:
+
+    - Logado: limite em memória por minuto (USER_RATE_LIMIT).
+    - Visitante: limite DIÁRIO persistido (tabela guest_chat_usage),
+      identificado pelo cookie `guest_id` assinado (resolve o problema de
+      todos os visitantes compartilharem o IP do proxy Next.js).
+
+    Retorna (headers X-RateLimit-*, valor_do_novo_cookie_guest_id_ou_None).
+    Levanta HTTPException 429 (estruturada) quando o limite é atingido.
+    """
+    if current_user:
+        rate_key = f"user_chat:{current_user.id}"
+        max_req, window = USER_RATE_LIMIT
+
+        if not rate_limiter.is_allowed(rate_key, max_req, window):
+            raise HTTPException(
+                status_code=429,
+                detail="Limite de mensagens atingido. Tente novamente em breve.",
+                headers=_build_rate_limit_headers(rate_key, max_req, window),
+            )
+
+        return _build_rate_limit_headers(rate_key, max_req, window), None
+
+    # --- Visitante: limite diário persistente por guest_id ---
+    guest_id, new_cookie_value = resolve_guest_identity(request)
+
+    if get_guest_usage(db, guest_id) >= GUEST_DAILY_MESSAGE_LIMIT:
+        reset = seconds_until_midnight()
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "error_code": "GUEST_DAILY_LIMIT",
+                "error": "Você atingiu o limite diário de mensagens gratuitas. Crie uma conta para continuar conversando sem limites.",
+                "remaining": 0,
+                "resetInSeconds": reset,
+            },
+            headers={
+                "X-RateLimit-Remaining": "0",
+                "X-RateLimit-Reset": str(reset),
+            },
+        )
+
+    used = increment_guest_usage(db, guest_id)
+    remaining = max(0, GUEST_DAILY_MESSAGE_LIMIT - used)
+    reset = seconds_until_midnight()
+
+    return {
+        "X-RateLimit-Remaining": str(remaining),
+        "X-RateLimit-Reset": str(reset),
+    }, new_cookie_value
+
 
 
 @router.post("/")
@@ -74,22 +140,13 @@ async def chat(
         # ========================================
         # 2. RATE LIMITING
         # ========================================
-        if current_user:
-            rate_key = f"user_chat:{current_user.id}"
-            max_req, window = USER_RATE_LIMIT
-        else:
-            client_host = request.client.host if request.client else "unknown"
-            rate_key = f"ip_chat:{client_host}"
-            max_req, window = GUEST_RATE_LIMIT
+        rate_limit_headers, guest_cookie_value = _apply_rate_limit(request, db, current_user)
 
-        if not rate_limiter.is_allowed(rate_key, max_req, window):
-            raise HTTPException(
-                status_code=429,
-                detail="Limite diario de mensagens atingido. Tente novamente mais tarde.",
-                headers=_build_rate_limit_headers(rate_key, max_req, window),
+        extra_headers = dict(rate_limit_headers)
+        if guest_cookie_value:
+            extra_headers["Set-Cookie"] = build_guest_cookie_header(
+                guest_cookie_value, IS_PRODUCTION
             )
-
-        rate_limit_headers = _build_rate_limit_headers(rate_key, max_req, window)
 
         # ========================================
         # 3. MODO VISITANTE (SEM BANCO)
@@ -108,7 +165,7 @@ async def chat(
                 language=message.language
             )
 
-            return JSONResponse(content={"reply": ai_response}, headers=rate_limit_headers)
+            return JSONResponse(content={"reply": ai_response}, headers=extra_headers)
 
         # ========================================
         # 4. MODO LOGADO (COM BANCO)
@@ -173,7 +230,7 @@ async def chat(
                 "reply": ai_response,
                 "conversation_id": conv_id
             },
-            headers=rate_limit_headers,
+            headers=extra_headers,
         )
 
     except HTTPException:
@@ -211,19 +268,12 @@ async def chat_stream(
         # ========================================
         # 2. RATE LIMITING
         # ========================================
-        if current_user:
-            rate_key = f"user_chat:{current_user.id}"
-            max_req, window = USER_RATE_LIMIT
-        else:
-            client_host = request.client.host if request.client else "unknown"
-            rate_key = f"ip_chat:{client_host}"
-            max_req, window = GUEST_RATE_LIMIT
+        rate_limit_headers, guest_cookie_value = _apply_rate_limit(request, db, current_user)
 
-        if not rate_limiter.is_allowed(rate_key, max_req, window):
-            raise HTTPException(
-                status_code=429,
-                detail="Limite diario de mensagens atingido. Tente novamente mais tarde.",
-                headers=_build_rate_limit_headers(rate_key, max_req, window),
+        stream_headers = dict(rate_limit_headers)
+        if guest_cookie_value:
+            stream_headers["Set-Cookie"] = build_guest_cookie_header(
+                guest_cookie_value, IS_PRODUCTION
             )
 
         # ========================================
@@ -245,7 +295,7 @@ async def chat_stream(
                 ):
                     yield token
 
-            return StreamingResponse(generate(), media_type="text/event-stream")
+            return StreamingResponse(generate(), media_type="text/event-stream", headers=stream_headers)
 
         # ========================================
         # 4. MODO LOGADO (COM BANCO + STREAMING)
@@ -327,7 +377,7 @@ async def chat_stream(
             finally:
                 db_save.close()
 
-        return StreamingResponse(generate_and_save(), media_type="text/event-stream")
+        return StreamingResponse(generate_and_save(), media_type="text/event-stream", headers=stream_headers)
 
     except HTTPException:
         raise

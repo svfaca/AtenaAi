@@ -71,7 +71,7 @@ export default function AboutHeader({ onClose }: AboutHeaderProps) {
               // Logado: Dashboard + nome (sem foto de perfil) + Sair
               <>
                 <Link
-                  href={user.role === 'teacher' ? '/app-area/professor' : '/app-area/estudante'}
+                  href={user.role === 'teacher' ? '/teacher' : '/scholar'}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
                 >
                   Dashboard
@@ -130,7 +130,7 @@ export default function AboutHeader({ onClose }: AboutHeaderProps) {
               <>
                 <span className="text-sm font-medium">{user.name}</span>
                 <Link
-                  href={user.role === 'teacher' ? '/app-area/professor' : '/app-area/estudante'}
+                  href={user.role === 'teacher' ? '/teacher' : '/scholar'}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium text-center"
                 >
                   Dashboard
@@ -170,7 +170,7 @@ export default function AboutHeader({ onClose }: AboutHeaderProps) {
         onLoginSuccess={(loggedUser) => {
           setLoginOpen(false)
           onClose?.()
-          const path = loggedUser.role === 'teacher' ? '/app-area/professor' : '/app-area/estudante'
+          const path = loggedUser.role === 'teacher' ? '/teacher' : '/scholar'
           router.push(path)
         }}
       />

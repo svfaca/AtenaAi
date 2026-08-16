@@ -167,22 +167,32 @@ async def upload_avatar(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Arquivo muito grande. Máximo: 2MB. Recebido: {file_size / 1024 / 1024:.2f}MB"
             )
+
+        # 3. 🔒 Validar o CONTEÚDO real (magic bytes) — não confia no MIME
+        #    declarado no header (que é forjável). Mesmo critério do FileService.
+        detected = FileService._detect_image(file_content)
+        if detected is None:
+            logger.warning(f"Conteúdo não é uma imagem válida: {file.filename}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Conteúdo do arquivo não é uma imagem válida",
+            )
         
-        # 3. Gerar nome único
+        # 4. Gerar nome único
         unique_filename = generate_unique_filename(file.filename or "avatar.png")
         file_path = AVATAR_DIR / unique_filename
         
-        # 4. Salvar arquivo
+        # 5. Salvar arquivo
         with open(file_path, "wb") as buffer:
             buffer.write(file_content)
         
         logger.info(f"Avatar salvo: {unique_filename}")
         
-        # 5. Remover avatar antigo (se existir)
+        # 6. Remover avatar antigo (se existir)
         old_avatar = getattr(current_user, 'profile_image', None)
         delete_old_avatar(old_avatar)  # type: ignore
         
-        # 6. Atualizar URL no banco
+        # 7. Atualizar URL no banco
         avatar_url = f"/api/v1/users/avatar/{unique_filename}"
         setattr(current_user, 'profile_image', avatar_url)  # type: ignore
         
@@ -379,5 +389,5 @@ def delete_own_account(
         logger.error(f"Erro ao deletar conta: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            detail="Erro ao excluir conta. Tente novamente."
         )

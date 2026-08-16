@@ -24,6 +24,8 @@ services:
     environment:
       ENVIRONMENT: production
       LOG_LEVEL: WARNING
+      # 🔒 OBRIGATÓRIO em .env — sem fallback para a chave de dev
+      SECRET_KEY: ${SECRET_KEY}
     volumes:
       # Remove volume de código em produção (usa apenas uploads)
       - backend_uploads:/app/uploads

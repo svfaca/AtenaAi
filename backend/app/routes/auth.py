@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, Form, HTTPException, status, File, Uploa
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime, timedelta
+from jose import JWTError, jwt
 import json
 import os
 
@@ -14,8 +15,9 @@ from app.database.query_helpers import active_users_query
 from app.models.user import User, UserRole
 from app.core.dependencies import get_current_user
 from app.schemas.user import UserCreate, UserResponse, Token
-from app.core.security import create_access_token, verify_password, get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES, create_refresh_token, REFRESH_TOKEN_EXPIRE_DAYS
+from app.core.security import create_access_token, verify_password, get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES, create_refresh_token, REFRESH_TOKEN_EXPIRE_DAYS, SECRET_KEY, ALGORITHM
 from app.core.logger import logger
+from app.core.cache import rate_limiter
 from app.services.file_service import FileService
 from app.utilities.interests import normalize_interests
 
@@ -39,6 +41,19 @@ COOKIE_SAMESITE = "lax"
 COOKIE_DOMAIN = None  # None = current domain
 
 # ============================
+# RATE LIMIT POR EMAIL (além do por IP no middleware)
+# ============================
+# 🔒 Login: 5 tentativas / 15 min por email. Conta mesmo para emails inexistentes
+# (não vaza quais emails existem). O middleware já limita por IP (10/15min).
+LOGIN_EMAIL_RATE_LIMIT = (5, 900)
+# 🔒 Registro: 3 / hora por email. Mitiga abuso de contas E o vetor de
+# reativação de contas soft-deletadas (que redefine a senha a partir do email).
+REGISTER_EMAIL_RATE_LIMIT = (3, 3600)
+# 🔒 Troca de senha: 5 tentativas / 15 min por usuário. Um access token
+# vazado não pode ser usado para brute-forcar a senha atual via change-password.
+CHANGE_PASSWORD_RATE_LIMIT = (5, 900)
+
+# ============================
 # SCHEMAS LOCAIS
 # ============================
 class EmailCheckRequest(BaseModel):
@@ -58,7 +73,15 @@ class AuthSuccessResponse(BaseModel):
     """Resposta de login/refresh bem-sucedida"""
     message: str
     user: UserResponse
-    access_token: Optional[str] = None  # 🔥 Incluído para fallback do frontend (memoryToken)
+    # 🔒 SEM access_token no body — o token trafega apenas via cookie HttpOnly.
+
+class ChangePasswordRequest(BaseModel):
+    """Troca de senha — exige a senha atual + nova senha (política mínima)."""
+    current_password: str
+    # 🔒 min 8 (alinhado com registro) e max 128 (bcrypt trunca em 72 bytes)
+    new_password: str = Field(
+        ..., min_length=8, max_length=128, description="Mínimo de 8 caracteres"
+    )
 
 
 # ============================
@@ -80,6 +103,28 @@ def register(
         logger.info(f"[REGISTRO] Iniciando registro para email: {user.email}")
         
         normalized_email = (user.email or "").strip().lower()
+
+        # 🔒 Rate limit por EMAIL (3/h): mitiga abuso de contas E o vetor de
+        # reativação de contas soft-deletadas (que redefine a senha a partir
+        # apenas do email).
+        email_rl_key = f"register_email:{normalized_email}"
+        email_max, email_window = REGISTER_EMAIL_RATE_LIMIT
+        if not rate_limiter.is_allowed(email_rl_key, email_max, email_window):
+            logger.warning(
+                f"[REGISTRO] Rate limit por email atingido: {normalized_email}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Muitas tentativas de cadastro para este email. Tente novamente mais tarde.",
+                headers={
+                    "X-RateLimit-Remaining": str(
+                        rate_limiter.get_remaining(email_rl_key, email_max, email_window)
+                    ),
+                    "X-RateLimit-Reset": str(
+                        rate_limiter.get_reset_time(email_rl_key, email_window) or 0
+                    ),
+                },
+            )
 
         # 1) Verifica primeiro usuários ativos com o helper de soft delete.
         active_user = active_users_query(db).filter(User.email == normalized_email).first()
@@ -110,7 +155,9 @@ def register(
             existing_user.gender = user.gender
             existing_user.interests = normalize_interests(user.interests)
 
-            role = user.role or UserRole.student
+            # 🔒 SEGURANÇA (V1): o cliente NUNCA escolhe o próprio role.
+            # student/teacher são papéis legítimos da UI; admin apenas via BOOTSTRAP_ADMIN_EMAIL.
+            role = user.role if user.role in (UserRole.student, UserRole.teacher) else UserRole.student
             if BOOTSTRAP_ADMIN_EMAIL and normalized_email == BOOTSTRAP_ADMIN_EMAIL:
                 role = UserRole.admin
             existing_user.role = role.value
@@ -143,8 +190,9 @@ def register(
         # 3) Email inexistente: cria novo usuário.
         logger.info(f"[REGISTRO] Email disponível: {normalized_email}")
 
-        # Cria novo usuário com senha hash
-        role = user.role or UserRole.student
+        # 🔒 SEGURANÇA (V1): o cliente NUNCA escolhe o próprio role.
+        # student/teacher são papéis legítimos da UI; admin apenas via BOOTSTRAP_ADMIN_EMAIL.
+        role = user.role if user.role in (UserRole.student, UserRole.teacher) else UserRole.student
 
         if BOOTSTRAP_ADMIN_EMAIL and normalized_email == BOOTSTRAP_ADMIN_EMAIL:
             role = UserRole.admin
@@ -207,7 +255,7 @@ def register(
         db.rollback()
         raise HTTPException(
             status_code=500,
-            detail=f"Erro ao registrar: {str(e)}"
+            detail="Erro ao registrar. Tente novamente."
         )
 
 
@@ -232,6 +280,25 @@ def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email ou senha incorretos",
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # 🔒 Rate limit por EMAIL (além do limite por IP no middleware).
+    # Conta mesmo quando o email não existe → não vaza quais emails existem.
+    email_rl_key = f"login_email:{normalized_username}"
+    email_max, email_window = LOGIN_EMAIL_RATE_LIMIT
+    if not rate_limiter.is_allowed(email_rl_key, email_max, email_window):
+        logger.warning(f"[LOGIN] Rate limit por email atingido: {normalized_username}")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Muitas tentativas de login para este email. Tente novamente em 15 minutos.",
+            headers={
+                "X-RateLimit-Remaining": str(
+                    rate_limiter.get_remaining(email_rl_key, email_max, email_window)
+                ),
+                "X-RateLimit-Reset": str(
+                    rate_limiter.get_reset_time(email_rl_key, email_window) or 0
+                ),
+            },
         )
 
     logger.info(f"[LOGIN] Tentativa para email: {normalized_username}")
@@ -276,13 +343,17 @@ def login(
         expires_delta=access_token_expires
     )
     
-    # 🔒 NOVO: Gera Refresh Token (7 dias - LONGO)
+    # 🔒 NOVO: Gera Refresh Token (REFRESH_TOKEN_EXPIRE_DAYS - LONGO)
+    # Carrega `ver` = token_version atual do usuário. Se o usuário fizer
+    # logout, token_version é incrementado e TODOS os refresh tokens
+    # anteriores ficam inválidos.
     refresh_token_expires = timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     refresh_token = create_refresh_token(
         data={
             "sub": str(user.id),
             "role": user.role.value
         },
+        ver=getattr(user, "token_version", 0) or 0,
         expires_delta=refresh_token_expires
     )
 
@@ -309,11 +380,11 @@ def login(
     )
     
     
-    # 🔥 Retornar access_token no body também para fallback do frontend
+    # 🔒 SEGURANÇA (V5): token NÃO é retornado no body — apenas em cookie HttpOnly.
+    # Retornar no JSON anularia a proteção HttpOnly (qualquer XSS teria acesso).
     return {
         "message": "Login bem-sucedido. Token definido em cookie HttpOnly.",
         "user": UserResponse.from_orm(user),
-        "access_token": access_token,
     }
 
 # ============================
@@ -354,7 +425,7 @@ def check_email(data: EmailCheckRequest, db: Session = Depends(get_db)):
         logger.error(f"[EMAIL-CHECK] ERRO: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Erro ao verificar email: {str(e)}"
+            detail="Erro ao verificar email. Tente novamente."
         )
 
 
@@ -461,29 +532,7 @@ async def update_profile(
 
 
 # ============================
-# 6. DELETAR CONTA
-# ============================
-@router.delete("/delete-account")
-def delete_account(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Deleta a conta do usuário logado e limpa seus arquivos"""
-    user = db.merge(current_user)
-    user_id = user.id
-    
-    # Deletar a foto de perfil se existir
-    if user.profile_image:
-        FileService.delete_profile_image(user.profile_image)
-    
-    db.delete(user)
-    db.commit()
-    
-    return {"message": f"Conta do usuário {user_id} deletada com sucesso"}
-
-
-# ============================
-# 7. OBTER ESTATÍSTICAS DO USUÁRIO
+# 6. OBTER ESTATÍSTICAS DO USUÁRIO
 # ============================
 @router.get("/me/stats", response_model=StatsResponse)
 def get_user_stats(
@@ -533,7 +582,7 @@ def get_user_stats(
 
 
 # ============================
-# 8. REFRESH TOKEN (NOVO - REAL)
+# 7. REFRESH TOKEN (NOVO - REAL)
 # ============================
 @router.post("/refresh", response_model=AuthSuccessResponse)
 def refresh_token(
@@ -549,7 +598,6 @@ def refresh_token(
     - Opcionalmente: rodar refresh_token NOVO (rotação)
     """
     from app.core.security import SECRET_KEY, ALGORITHM
-    from jose import JWTError, jwt
     
     # Extrai refresh token do cookie
     refresh_token_cookie = request.cookies.get("refresh_token")
@@ -589,6 +637,19 @@ def refresh_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuário não encontrado"
         )
+
+    # 🔒 TOKEN VERSIONING: o logout incrementa user.token_version.
+    # Refresh tokens emitidos ANTES da revogação carregam `ver` antigo
+    # e são rejeitados aqui — mesmo com assinatura e exp válidos.
+    current_token_version = getattr(user, "token_version", 0) or 0
+    if (payload.get("ver", 0) or 0) != current_token_version:
+        logger.warning(
+            f"[REFRESH] Refresh token revogado (ver antigo) para User ID: {user.id}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token revogado. Faça login novamente.",
+        )
     
     # Gera novo Access Token (CURTO)
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -600,13 +661,15 @@ def refresh_token(
         expires_delta=access_token_expires
     )
     
-    # 🔄 ROTAÇÃO: Gera novo Refresh Token (LONGO)
+    # 🔄 ROTAÇÃO: Gera novo Refresh Token (LONGO) com o MESMO ver (o ver só
+    # muda no logout). Rotacionar não revoga; o ver é a fonte de revogação.
     refresh_token_expires = timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     new_refresh_token = create_refresh_token(
         data={
             "sub": str(user.id),
             "role": user.role.value
         },
+        ver=current_token_version,
         expires_delta=refresh_token_expires
     )
 
@@ -635,19 +698,143 @@ def refresh_token(
     return {
         "message": "Token renovado com sucesso (rotação aplicada)",
         "user": UserResponse.from_orm(user),
-        "access_token": new_access_token,  # 🔥 Retornar token para fallback do frontend (memoryToken)
     }
 
 
 # ============================
-# 9. LOGOUT (NOVO)
+# 9. LOGOUT (NOVO) — revoga refresh tokens
 # ============================
 @router.post("/logout")
-def logout(response: Response):
+def logout(
+    response: Response,
+    request: Request,
+    db: Session = Depends(get_db),
+):
     """
-    ✅ LOGOUT: Limpa TODOS os cookies de autenticação
+    ✅ LOGOUT: limpa TODOS os cookies de autenticação E revoga os refresh
+    tokens do usuário (token_version += 1).
+
+    Como o refresh é JWT stateless, sem revogação o token roubado
+    continuaria válido por REFRESH_TOKEN_EXPIRE_DAYS mesmo após o logout.
+    Incrementar token_version invalida TODOS os refresh tokens emitidos
+    antes deste momento — em qualquer dispositivo.
     """
+    # Identifica o usuário pelo refresh_token do cookie (best-effort:
+    # se o token já estiver expirado/corrompido, apenas limpa os cookies).
+    refresh_token_cookie = request.cookies.get("refresh_token")
+    if refresh_token_cookie:
+        try:
+            payload = jwt.decode(refresh_token_cookie, SECRET_KEY, algorithms=[ALGORITHM])
+            user_id = payload.get("sub")
+            if user_id and payload.get("type") == "refresh":
+                user = active_users_query(db).filter(User.id == int(user_id)).first()
+                if user:
+                    new_version = (getattr(user, "token_version", 0) or 0) + 1
+                    user.token_version = new_version
+                    db.add(user)
+                    db.commit()
+                    logger.info(
+                        f"[LOGOUT] Refresh tokens revogados para User ID: {user.id} "
+                        f"(token_version={new_version})"
+                    )
+        except (JWTError, ValueError, TypeError):
+            # Token inválido/expirado: não há sessão a revogar.
+            pass
+
     response.delete_cookie("access_token", httponly=True, samesite=COOKIE_SAMESITE)
     response.delete_cookie("refresh_token", httponly=True, samesite=COOKIE_SAMESITE)
-    
-    return {"message": "Logout bem-sucedido. Cookies limpos."}
+
+    return {"message": "Logout bem-sucedido. Cookies limpos e refresh tokens revogados."}
+
+
+# ============================
+# 10. ALTERAR SENHA (revoga TODAS as sessões)
+# ============================
+@router.post("/change-password")
+def change_password(
+    payload: ChangePasswordRequest,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Altera a senha do usuário autenticado e revoga TODAS as sessões
+    (token_version += 1), invalidando os refresh tokens emitidos antes.
+
+    Fluxo:
+    - Exige a senha atual (mitiga sessão sequestrada usada para trocar senha).
+    - Nova senha com política mínima (8+) e máximo (128) no schema.
+    - Após a troca, o usuário precisa logar de novo (sessão atual revogada).
+    """
+    try:
+        user = active_users_query(db).filter(User.id == current_user.id).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuário não encontrado",
+            )
+
+        # 🔒 Rate limit por usuário (contra brute force da senha atual com um
+        # access token vazado). Conta ANTES de verificar a senha.
+        cp_rl_key = f"change_password:{user.id}"
+        cp_max, cp_window = CHANGE_PASSWORD_RATE_LIMIT
+        if not rate_limiter.is_allowed(cp_rl_key, cp_max, cp_window):
+            logger.warning(
+                f"[CHANGE-PASSWORD] Rate limit atingido para User ID: {user.id}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Muitas tentativas de troca de senha. Tente novamente em 15 minutos.",
+                headers={
+                    "X-RateLimit-Remaining": str(
+                        rate_limiter.get_remaining(cp_rl_key, cp_max, cp_window)
+                    ),
+                    "X-RateLimit-Reset": str(
+                        rate_limiter.get_reset_time(cp_rl_key, cp_window) or 0
+                    ),
+                },
+            )
+
+        hashed = str(getattr(user, "hashed_password", ""))
+        if not verify_password(payload.current_password, hashed):
+            logger.warning(
+                f"[CHANGE-PASSWORD] Senha atual incorreta para User ID: {user.id}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Senha atual incorreta",
+            )
+
+        if verify_password(payload.new_password, hashed):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A nova senha deve ser diferente da atual",
+            )
+
+        user.hashed_password = get_password_hash(payload.new_password)
+        # 🔒 Revoga TODAS as sessões: refresh tokens emitidos antes da troca
+        # passam a carregar `ver` antigo → rejeitados no /refresh.
+        user.token_version = (getattr(user, "token_version", 0) or 0) + 1
+        db.add(user)
+        db.commit()
+
+        logger.info(
+            f"[CHANGE-PASSWORD] Senha alterada e sessões revogadas para "
+            f"User ID: {user.id} (token_version={user.token_version})"
+        )
+
+        # Limpa os cookies de auth — a sessão atual foi revogada.
+        response.delete_cookie("access_token", httponly=True, samesite=COOKIE_SAMESITE)
+        response.delete_cookie("refresh_token", httponly=True, samesite=COOKIE_SAMESITE)
+
+        return {"message": "Senha alterada com sucesso. Faça login novamente."}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"[CHANGE-PASSWORD] Erro ao alterar senha: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao alterar senha. Tente novamente.",
+        )

@@ -4,24 +4,13 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from typing import Optional
 
-from app.database.database import SessionLocal
+from app.database.database import get_db
 from app.database.query_helpers import active_users_query
 from app.models.user import User
 from app.core.security import SECRET_KEY, ALGORITHM
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
-
-
-# =========================
-# DB
-# =========================
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 # =========================
@@ -53,10 +42,20 @@ def get_current_user(
         if not user_id:
             raise credentials_exception
 
+        # 🔒 Rejeitar tokens de refresh usados como access token
+        if payload.get("type") != "access":
+            raise credentials_exception
+
+        # 🔒 "sub" não-numérico → credencial inválida (401), não erro interno (500)
+        try:
+            user_id_int = int(user_id)
+        except (ValueError, TypeError):
+            raise credentials_exception
+
     except JWTError:
         raise credentials_exception
 
-    user = active_users_query(db).filter(User.id == int(user_id)).first()
+    user = active_users_query(db).filter(User.id == user_id_int).first()
 
     if not user:
         raise credentials_exception
@@ -83,11 +82,21 @@ def get_current_user_optional(
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("sub")
-        
+
         if not user_id:
             return None
-            
-        return active_users_query(db).filter(User.id == int(user_id)).first()
-        
+
+        # 🔒 Rejeitar tokens de refresh usados como access token
+        if payload.get("type") != "access":
+            return None
+
+        # 🔒 "sub" não-numérico → trata como não-autenticado (None)
+        try:
+            user_id_int = int(user_id)
+        except (ValueError, TypeError):
+            return None
+
+        return active_users_query(db).filter(User.id == user_id_int).first()
+
     except JWTError:
         return None

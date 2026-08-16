@@ -23,7 +23,7 @@ def test_imports():
         from app.services.ai_service import AIMentionDetector, detect_ai_mention, generate_classroom_ai_response
         print("✅ AI service functions imported successfully")
         
-        from app.schemes.teacher import ClassroomMemberResponse, ClassroomWithMembersResponse
+        from app.schemas.teacher import ClassroomMemberResponse, ClassroomWithMembersResponse
         print("✅ New schemas imported successfully")
         
         print("\n✅ All imports successful!")
@@ -121,7 +121,7 @@ def test_database_migration():
         migration_file = "backend/alembic/versions/a8d5f7e3c1f9_add_classroom_members_and_ai_support.py"
         
         if os.path.exists(migration_file):
-            with open(migration_file, 'r') as f:
+            with open(migration_file, 'r', encoding='utf-8') as f:
                 content = f.read()
                 if 'classroom_members' in content and 'upgrade' in content:
                     print(f"✅ Migration file exists and contains classroom_members table")
@@ -148,7 +148,7 @@ def test_websocket_handler():
         handler_file = "backend/app/routes/group_chat.py"
         
         if os.path.exists(handler_file):
-            with open(handler_file, 'r') as f:
+            with open(handler_file, 'r', encoding='utf-8') as f:
                 content = f.read()
                 checks = {
                     'has AI import': 'from app.services.ai_service import' in content,
@@ -184,7 +184,7 @@ def test_schemas():
         schema_file = "backend/app/schemas/teacher.py"
         
         if os.path.exists(schema_file):
-            with open(schema_file, 'r') as f:
+            with open(schema_file, 'r', encoding='utf-8') as f:
                 content = f.read()
                 schemas = [
                     'ClassroomMemberCreate',
@@ -221,7 +221,7 @@ def test_classrooms_endpoints():
         route_file = "backend/app/routes/classrooms.py"
         
         if os.path.exists(route_file):
-            with open(route_file, 'r') as f:
+            with open(route_file, 'r', encoding='utf-8') as f:
                 content = f.read()
                 endpoints = {
                     'GET /classrooms/{id}/members': 'get_classroom_members',

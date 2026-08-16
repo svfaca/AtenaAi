@@ -1,4 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from typing import Optional, List
+from datetime import datetime, date
 from sqlalchemy.orm import Session
 
 from app.database.database import get_db
@@ -11,15 +14,35 @@ router = APIRouter(
 )
 
 
+class AdminUserResponse(BaseModel):
+    """Resposta segura de admin — NUNCA expõe hashed_password."""
+    id: int
+    email: str
+    full_name: str
+    role: str
+    account_type: Optional[str] = None
+    nickname: Optional[str] = None
+    interests: Optional[str] = None
+    profile_image: Optional[str] = None
+    gender: Optional[str] = None
+    birth_date: Optional[date] = None
+    deleted_at: Optional[datetime] = None
+    deleted_by: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+
 # =========================
 # LISTAR USUÁRIOS
 # =========================
-@router.get("/users")
+@router.get("/users", response_model=List[AdminUserResponse])
 def list_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.admin))
 ):
-    return db.query(User).all()
+    # 🔒 response_model explícito impede a serialização de hashed_password
+    return db.query(User).order_by(User.id.desc()).all()
 
 
 # =========================

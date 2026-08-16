@@ -24,6 +24,7 @@ Backend (/api/v1/*)
 | `/api/auth/logout` | POST | `app/api/auth/logout/route.ts` | *(local cookie clear)* |
 | `/api/auth/refresh` | POST | `app/api/auth/refresh/route.ts` | `/api/v1/auth/refresh` |
 | `/api/auth/check-email` | POST | `app/api/auth/check-email/route.ts` | `/api/v1/auth/check-email` |
+| `(direto)` | POST | — (backend) | `/api/v1/auth/change-password` |
 
 ### Conversations
 
@@ -56,7 +57,7 @@ Backend (/api/v1/*)
 |----------|--------|------|---------|
 | `/api/user/update` | PUT | `app/api/user/update/route.ts` | `/api/v1/auth/update-profile` |
 | `/api/user/update` | POST | `app/api/user/update/route.ts` | `/api/v1/auth/update-profile` |
-| `/api/user/delete` | DELETE | `app/api/user/delete/route.ts` | `/api/v1/auth/delete-account` |
+| `/api/user/delete` | DELETE | `app/api/user/delete/route.ts` | `/api/v1/users/me` (soft delete com senha) |
 
 ### Classrooms
 

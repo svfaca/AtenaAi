@@ -222,7 +222,10 @@ export function SettingsModal({ isOpen, onClose }: {
       return;
     }
 
-    if (!window.confirm("Digite 'DELETAR' para confirmar... Será mesmo?")) {
+    // 🔒 SEGURANÇA: o fluxo seguro exige a senha do usuário + confirmação
+    // textual. (O antigo /auth/delete-account deletava a conta SEM senha.)
+    const password = window.prompt("Digite sua senha para confirmar a exclusão permanente da conta:");
+    if (!password) {
       return;
     }
 
@@ -230,20 +233,22 @@ export function SettingsModal({ isOpen, onClose }: {
     setError(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "https://web-production-110f3.up.railway.app";
-
-      const res = await fetch(`${apiUrl}/api/v1/auth/delete-account`, {
+      const res = await fetch("/api/user/delete", {
         method: "DELETE",
-        credentials: "include" // 🔑 Envia cookies automaticamente
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, confirm_text: "DELETE" }),
       });
 
       if (res.ok) {
+        // Limpar hint de sessão do cliente (o access_token é HttpOnly)
+        document.cookie = "atena_session_hint=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax";
         setUser(null);
         onClose();
         router.push("/");
       } else {
         const data = await res.json();
-        setError(data.error || "Erro ao deletar conta");
+        setError(data.detail || data.error || "Erro ao deletar conta");
       }
     } catch (err) {
       console.error("Erro ao deletar conta:", err);

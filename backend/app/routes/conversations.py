@@ -11,8 +11,9 @@ from app.models.message import Message
 from app.schemas.message import ChatMessage
 from app.schemas.chat import ConversationResponse
 from app.schemas.pagination import PaginationParams, PaginatedResponse
-from app.core.dependencies import get_current_user, get_db
-from app.core.logger import log_event
+from app.core.dependencies import get_current_user
+from app.core.logger import log_event, logger
+from app.database.database import get_db
 from app.services.ai_service import generate_ai_response, generate_ai_response_stream
 from app.core.config import AI_MODEL
 from app.utilities.interests import parse_interests
@@ -338,7 +339,8 @@ def send_message_stream(
                 db_save.close()
                 
         except Exception as e:
-            yield f"\n\n[Erro: {str(e)}]"
+            logger.error(f"[CONVERSATION STREAM] Erro ao gerar resposta: {str(e)}", exc_info=True)
+            yield "\n\n[Erro: não foi possível gerar a resposta. Tente novamente.]"
 
     return StreamingResponse(generate_and_save(), media_type="text/event-stream")
 

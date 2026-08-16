@@ -84,7 +84,12 @@ if not SECRET_KEY:
         SECRET_KEY = "dev-secret-key-change-in-production"
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "21600"))  # 15d
+# 🔒 Ciclo de vida dos tokens:
+# - Access token: 8 horas (curto) — reduz a janela de uso de um token roubado
+# - Refresh token: 14 dias (longo) — SEMPRE maior que o access token
+#   (antes o refresh de 7d expirava ANTES do access de 15d, invalidando o fluxo)
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "480"))  # 8h
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "14"))  # 14 dias
 
 # =========================================================
 # AI CONFIG
@@ -96,7 +101,6 @@ OPENAI_API_KEY = getenv_railway("OPENAI_API_KEY")
 # Limites de input/processing
 MAX_INPUT_LENGTH = int(os.getenv("MAX_INPUT_LENGTH", "500"))
 MAX_MESSAGE_HISTORY = int(os.getenv("MAX_MESSAGE_HISTORY", "10"))
-MAX_MESSAGES_PER_REQUEST = int(os.getenv("MAX_MESSAGES_PER_REQUEST", "100"))
 
 # Validar que OpenAI está configurada
 if not OPENAI_API_KEY or OPENAI_API_KEY.strip() == "" or OPENAI_API_KEY == "sk-":
@@ -207,9 +211,18 @@ ALLOWED_UPLOAD_TYPES = {"image/jpeg", "image/png", "image/webp"}
 # RATE LIMITING CONFIG
 # =========================================================
 
-RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
 DEV_LOGIN_RATE_LIMIT_FALLBACK = os.getenv("DEV_LOGIN_RATE_LIMIT_FALLBACK", "true").lower() == "true"
-GUEST_RATE_LIMIT = (10, 86400)  # 10 requests per day
+# 🔒 IPs de proxies CONFIÁVEIS (ex.: IP do serviço Next.js). Se vazio, o
+# backend NÃO confia em X-Forwarded-For (evita spoofing de IP por clientes).
+# Configure em produção com o IP do proxy para o rate limit ver o IP real.
+TRUSTED_PROXY_IPS = {
+    ip.strip() for ip in os.getenv("TRUSTED_PROXY_IPS", "").split(",") if ip.strip()
+}
+# 🔒 Limite DIÁRIO de mensagens para visitantes (não-logados), persistido na
+# tabela guest_chat_usage e identificado pelo cookie guest_id assinado.
+# (Antes usava-se IP, que é inútil atrás do proxy Next.js: todos os visitantes
+# compartilhavam o IP do servidor frontend.)
+GUEST_DAILY_MESSAGE_LIMIT = int(os.getenv("GUEST_DAILY_MESSAGE_LIMIT", "10"))
 USER_RATE_LIMIT = (100, 60)     # 100 requests per minute
 
 # =========================================================
@@ -222,6 +235,5 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO" if not DEBUG else "DEBUG")
 # FEATURE FLAGS
 # =========================================================
 
-ENABLE_WEBSOCKET_COMPRESSION = os.getenv("ENABLE_WEBSOCKET_COMPRESSION", "true").lower() == "true"
-ENABLE_CACHING = os.getenv("ENABLE_CACHING", "true").lower() == "true"
-ENABLE_RATE_LIMITING = os.getenv("ENABLE_RATE_LIMITING", "true").lower() == "true"
+# (Flags ENABLE_* removidas — nunca eram lidas por nenhum código.)
+

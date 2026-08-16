@@ -13,7 +13,11 @@ from app.utilities.interests import parse_interests
 
 class UserCreate(BaseModel):
     email: str
-    password: str
+    # 🔒 Política mínima de senha (alinhada com o frontend)
+    # max 128: bcrypt trunca silenciosamente em 72 bytes
+    password: str = Field(
+        ..., min_length=8, max_length=128, description="Entre 8 e 128 caracteres"
+    )
     full_name: str
     role: Optional[UserRole] = None
 

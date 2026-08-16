@@ -12,6 +12,18 @@ from threading import Lock
 
 
 # =========================================================
+# CONFIG DE CUSTO / RESILIÊNCIA DA OPENAI
+# =========================================================
+# 🔒 Limite de tokens de SAÍDA por chamada (controle de custo: uma resposta
+# gigante pode custar caro por request, especialmente em modo visitante).
+MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", "2048"))
+# Timeout em segundos + retries do cliente OpenAI (evita requests pendurados
+# segurando workers por minutos).
+OPENAI_TIMEOUT_SECONDS = int(os.getenv("OPENAI_TIMEOUT_SECONDS", "60"))
+OPENAI_MAX_RETRIES = int(os.getenv("OPENAI_MAX_RETRIES", "2"))
+
+
+# =========================================================
 # HELPER: Build user context efficiently
 # =========================================================
 def build_user_context(
@@ -70,6 +82,80 @@ def build_user_context(
 
 
 # Cliente global com lock para thread-safety
+def _detect_and_log_suspicious(messages: list, user_id: Optional[int]) -> str:
+    """
+    Varre as mensagens do usuário procurando padrões de jailbreak/prompt
+    injection e registra um warning. Retorna o conteúdo concatenado.
+    """
+    user_message_content = ""
+    for msg in messages:
+        if isinstance(msg, dict) and msg.get("role") == "user":
+            content = msg.get("content", "")
+            if isinstance(content, str):
+                user_message_content += content + "\n"
+
+    if contains_suspicious_patterns(user_message_content):
+        logger.warning(
+            f"⚠️ Padrão suspeito detectado do usuário {user_id}: "
+            "possível tentativa de jailbreak"
+        )
+
+    return user_message_content.strip()
+
+
+def _prepare_secure_messages(
+    messages: list,
+    user_context: str,
+    language: Optional[str],
+) -> Tuple[str, list]:
+    """
+    Monta o system prompt com o reforço de segurança (sandwich) e a lista de
+    mensagens com a ÚLTIMA mensagem do usuário isolada por delimitadores.
+
+    Usado TANTO no stream quanto no não-stream — antes a proteção existia
+    apenas no fluxo não-stream, deixando o chat principal (stream) sem ela.
+
+    Retorna (system_prompt_reforçado, mensagens_isoladas).
+    """
+    system_prompt = get_system_prompt(language)
+    if user_context:
+        system_prompt += user_context
+
+    # Encontra a última mensagem do usuário (a pergunta atual)
+    last_user_msg = None
+    for msg in reversed(messages):
+        if (
+            isinstance(msg, dict)
+            and msg.get("role") == "user"
+            and isinstance(msg.get("content"), str)
+            and msg["content"].strip()
+        ):
+            last_user_msg = msg
+            break
+
+    if last_user_msg is None:
+        return system_prompt, list(messages)
+
+    reinforced_system, isolated_user_message = sandwich_with_security(
+        system_prompt,
+        user_context,
+        last_user_msg["content"],
+        language or "pt",
+    )
+
+    secured_messages = list(messages)
+    for i in range(len(secured_messages) - 1, -1, -1):
+        if secured_messages[i] is last_user_msg:
+            secured_messages[i] = {
+                **secured_messages[i],
+                "content": isolated_user_message,
+            }
+            break
+
+    return reinforced_system, secured_messages
+
+
+
 _client = None
 _client_lock = Lock()
 
@@ -92,7 +178,12 @@ def get_client():
             logger.error("OPENAI_API_KEY não configurada")
             raise ValueError("OPENAI_API_KEY não configurada")
 
-        _client = OpenAI(api_key=api_key)
+        _client = OpenAI(
+            api_key=api_key,
+            # 🔒 Timeout + retries: evita chamadas penduradas segurando workers
+            timeout=OPENAI_TIMEOUT_SECONDS,
+            max_retries=OPENAI_MAX_RETRIES,
+        )
         logger.info("Cliente OpenAI inicializado com sucesso")
         return _client
 
@@ -113,17 +204,7 @@ def generate_ai_response(
 
     try:
         # 🔒 SEGURANÇA: Detecta tentativas de jailbreak
-        user_message_content = ""
-        for msg in messages:
-            if isinstance(msg, dict) and msg.get("role") == "user":
-                content = msg.get("content", "")
-                if isinstance(content, str):
-                    user_message_content += content + "\n"
-        
-        if contains_suspicious_patterns(user_message_content):
-            logger.warning(f"⚠️ Padrão suspeito detectado do usuário {user_id}: possível tentativa de jailbreak")
-        
-        system_prompt = get_system_prompt(language)
+        _detect_and_log_suspicious(messages, user_id)
 
         # Adiciona contexto do usuário usando função otimizada
         user_context = build_user_context(
@@ -136,16 +217,11 @@ def generate_ai_response(
             user_interests=user_interests,
             language=language or "pt"
         )
-        
-        if user_context:
-            system_prompt += user_context
 
-        # 🔒 REFORÇO DE SEGURANÇA: Sandwich com instruções de segurança
-        reinforced_system, _ = sandwich_with_security(
-            system_prompt, 
-            user_context,
-            user_message_content,
-            language or "pt"
+        # 🔒 REFORÇO DE SEGURANÇA: system prompt com sandwich + mensagem do
+        # usuário isolada por delimitadores (anti prompt-injection)
+        reinforced_system, secured_messages = _prepare_secure_messages(
+            messages, user_context, language
         )
 
         client = get_client()
@@ -154,8 +230,9 @@ def generate_ai_response(
             model=AI_MODEL,
             messages=[
                 {"role": "system", "content": reinforced_system},
-                *messages
-            ]
+                *secured_messages
+            ],
+            max_tokens=MAX_OUTPUT_TOKENS,  # 🔒 controle de custo por resposta
         )
 
         return response.choices[0].message.content
@@ -180,24 +257,27 @@ def generate_ai_response_stream(
 ):
     """Gera resposta da IA com streaming - yield tokens um por um"""
 
+    # 🔒 SEGURANÇA: Detecta tentativas de jailbreak (uma vez, fora do retry)
+    _detect_and_log_suspicious(messages, user_id)
+
+    user_context = build_user_context(
+        user_name=user_name,
+        user_nickname=user_nickname,
+        user_email=user_email,
+        user_gender=user_gender,
+        user_birth_date=user_birth_date,
+        user_account_type=user_account_type,
+        user_interests=user_interests,
+        language=language or "pt"
+    )
+
     for attempt in range(max_retries):
         try:
-            system_prompt = get_system_prompt(language)
-
-            # Adiciona contexto do usuário
-            user_context = build_user_context(
-                user_name=user_name,
-                user_nickname=user_nickname,
-                user_email=user_email,
-                user_gender=user_gender,
-                user_birth_date=user_birth_date,
-                user_account_type=user_account_type,
-                user_interests=user_interests,
-                language=language or "pt"
+            # 🔒 SEGURANÇA (mesmo reforço da versão não-stream): sandwich no
+            # system prompt + mensagem do usuário isolada por delimitadores
+            system_prompt, secured_messages = _prepare_secure_messages(
+                messages, user_context, language
             )
-            
-            if user_context:
-                system_prompt += user_context
 
             client = get_client()
 
@@ -206,9 +286,10 @@ def generate_ai_response_stream(
                 model=AI_MODEL,
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    *messages
+                    *secured_messages
                 ],
-                stream=True
+                stream=True,
+                max_tokens=MAX_OUTPUT_TOKENS,  # 🔒 controle de custo por resposta
             )
 
             # Yield cada token conforme chega

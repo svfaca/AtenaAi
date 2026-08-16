@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       return NextResponse.json(
-        { message: 'Senha deve ter no mínimo 6 caracteres' },
+        { message: 'Senha deve ter no mínimo 8 caracteres' },
         { status: 400 }
       )
     }
@@ -34,7 +34,8 @@ export async function POST(request: NextRequest) {
         birth_date: birthdate || null,
         gender: gender || null,
         interests: normalizedInterests,
-        ...(role ? { role } : {}),
+        // 🔒 SEGURANÇA (V1): apenas papéis legítimos da UI; backend também revalida
+        ...(role === 'student' || role === 'teacher' ? { role } : {}),
       }),
     })
 

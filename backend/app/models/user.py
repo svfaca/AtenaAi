@@ -61,6 +61,17 @@ class User(Base):
     delete_scheduled_at = Column(DateTime, nullable=True)
 
     # ========================
+    # Auth / Sessões
+    # ========================
+    # 🔒 Token versioning dos refresh tokens: incrementado no logout (e, no
+    # futuro, na troca de senha) para invalidar TODOS os refresh tokens
+    # emitidos anteriormente. O refresh token carrega `ver`; na validação,
+    # ver != token_version → 401. Como o refresh é JWT stateless, sem esta
+    # coluna o logout não teria efeito no servidor (token roubado valeria
+    # até expirar).
+    token_version = Column(Integer, nullable=False, default=0, server_default=text("0"))
+
+    # ========================
     # Relacionamentos
     # ========================
     conversations = relationship(

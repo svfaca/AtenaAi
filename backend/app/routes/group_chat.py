@@ -1,6 +1,6 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 import json
 import logging
@@ -25,6 +25,33 @@ router = APIRouter(
 
 
 # =========================================================
+# HELPERS (handshake consistente com subprotocolo)
+# =========================================================
+
+async def _accept_ws(websocket: WebSocket, ws_token: Optional[str]) -> None:
+    """
+    Aceita a conexão ecoando o subprotocolo quando o token veio por ele.
+    O browser só completa o handshake se o servidor ecoar o subprotocolo
+    solicitado em accept().
+    """
+    if ws_token:
+        await websocket.accept(subprotocol=ws_token)
+    else:
+        await websocket.accept()
+
+
+async def _reject_ws(
+    websocket: WebSocket,
+    code: int,
+    reason: str,
+    ws_token: Optional[str],
+) -> None:
+    """Aceita (para entregar o close code ao cliente) e fecha com o código."""
+    await _accept_ws(websocket, ws_token)
+    await websocket.close(code=code, reason=reason)
+
+
+# =========================================================
 # WEBSOCKET: CHAT EM TEMPO REAL
 # =========================================================
 
@@ -32,7 +59,10 @@ router = APIRouter(
 async def websocket_endpoint(
     websocket: WebSocket,
     classroom_id: int,
-    token: str = Query(...)
+    # ⚠️ DEPRECADO: token na query string vaza em logs/histórico/Referer.
+    # Mantido apenas para compatibilidade — remover após os clientes migrarem
+    # para o subprotocolo (Sec-WebSocket-Protocol).
+    token: str = Query(None)
 ):
     """WebSocket endpoint para chat em grupo em tempo real"""
     
@@ -41,27 +71,41 @@ async def websocket_endpoint(
     
     try:
         logger.debug(f"[WebSocket] New connection attempt for classroom {classroom_id}")
+
+        # 🔒 SEGURANÇA: o token NÃO deve trafegar na URL. O cliente envia via
+        # Sec-WebSocket-Protocol: new WebSocket(url, [token]) — o servidor deve
+        # ecoar o subprotocolo em accept() para completar o handshake.
+        subprotocols = (websocket.headers.get("sec-websocket-protocol") or "").split(",")
+        ws_token = None
+        for candidate in (p.strip() for p in subprotocols):
+            # "eyJ" é o prefixo típico de um JWT (header base64url começa com 'ey')
+            if candidate and candidate.startswith("eyJ"):
+                ws_token = candidate
+                break
+
+        auth_token = ws_token or token  # fallback legado (query string)
+        if not auth_token:
+            await _reject_ws(websocket, 4003, "Authentication failed", ws_token)
+            logger.warning(f"[WebSocket] Rejected classroom {classroom_id}: token ausente")
+            return
         
         # ========== TOKEN VALIDATION ==========
         try:
             logger.debug(f"[WebSocket] Decoding token...")
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            payload = jwt.decode(auth_token, SECRET_KEY, algorithms=[ALGORITHM])
             user_id = payload.get("sub")
             if not user_id:
-                await websocket.accept()
-                await websocket.close(code=4001, reason="Invalid token")
+                await _reject_ws(websocket, 4001, "Invalid token", ws_token)
                 logger.warning(f"[WebSocket] Rejected classroom {classroom_id}: Invalid token (no user_id)")
                 return
             logger.debug(f"[WebSocket] Token decoded successfully. User ID: {user_id}")
         except JWTError as e:
-            await websocket.accept()
-            await websocket.close(code=4003, reason="Authentication failed")
+            await _reject_ws(websocket, 4003, "Authentication failed", ws_token)
             logger.warning(f"[WebSocket] Rejected classroom {classroom_id}: JWT error - {str(e)}")
             return
         except Exception as e:
             logger.error(f"[WebSocket] Unexpected error during token validation: {str(e)}", exc_info=True)
-            await websocket.accept()
-            await websocket.close(code=5000, reason="Server error")
+            await _reject_ws(websocket, 5000, "Server error", ws_token)
             return
         
         # ========== USER VALIDATION ==========
@@ -69,8 +113,7 @@ async def websocket_endpoint(
             logger.debug(f"[WebSocket] Looking up user {user_id}...")
             user = db.query(User).filter(User.id == int(user_id)).first()
             if not user:
-                await websocket.accept()
-                await websocket.close(code=4002, reason="User not found")
+                await _reject_ws(websocket, 4002, "User not found", ws_token)
                 logger.warning(f"[WebSocket] Rejected classroom {classroom_id}: User {user_id} not found")
                 return
             
@@ -79,8 +122,7 @@ async def websocket_endpoint(
             logger.debug(f"[WebSocket] User found: {user_name} (role: {user_role})")
         except Exception as e:
             logger.error(f"[WebSocket] Error looking up user {user_id}: {str(e)}", exc_info=True)
-            await websocket.accept()
-            await websocket.close(code=5000, reason="Server error")
+            await _reject_ws(websocket, 5000, "Server error", ws_token)
             return
         
         # ========== CLASSROOM & PERMISSION VALIDATION ==========
@@ -88,8 +130,7 @@ async def websocket_endpoint(
             logger.debug(f"[WebSocket] Validating classroom {classroom_id}...")
             classroom = db.query(Classroom).filter(Classroom.id == classroom_id).first()
             if not classroom:
-                await websocket.accept()
-                await websocket.close(code=4004, reason="Classroom not found")
+                await _reject_ws(websocket, 4004, "Classroom not found", ws_token)
                 logger.warning(f"[WebSocket] Rejected: Classroom {classroom_id} not found")
                 return
             
@@ -102,19 +143,19 @@ async def websocket_endpoint(
             logger.debug(f"[WebSocket] User {user_name}: teacher={is_teacher}, student={is_student}")
             
             if not is_teacher and not is_student:
-                await websocket.accept()
-                await websocket.close(code=4005, reason="Access denied")
+                await _reject_ws(websocket, 4005, "Access denied", ws_token)
                 logger.warning(f"[WebSocket] Rejected: User {user_name} (ID: {user.id}) has no access to classroom {classroom_id}")
                 return
         except Exception as e:
             logger.error(f"[WebSocket] Error validating classroom {classroom_id}: {str(e)}", exc_info=True)
-            await websocket.accept()
-            await websocket.close(code=5000, reason="Server error")
+            await _reject_ws(websocket, 5000, "Server error", ws_token)
             return
         
         # ========== ALL VALIDATIONS PASSED - ACCEPT CONNECTION ==========
         logger.debug(f"[WebSocket] All validations passed. Accepting connection...")
-        await websocket.accept()
+        # 🔒 Se o token veio via subprotocolo (Sec-WebSocket-Protocol), o servidor
+        # DEVE ecoá-lo em accept() para o navegador completar o handshake.
+        await _accept_ws(websocket, ws_token)
         logger.info(f"[WebSocket] ACCEPTED: {user_name} (ID: {user.id}) to classroom {classroom_id}")
         
         # Close database session for validation (will create new ones for messages)

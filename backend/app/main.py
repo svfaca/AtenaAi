@@ -8,15 +8,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
 from app.core.config import (
     CORS_ORIGINS, API_VERSION, API_TITLE, UPLOAD_DIR, 
-    ENVIRONMENT, LOG_LEVEL
+    ENVIRONMENT, LOG_LEVEL, IS_PRODUCTION
 )
 from app.core.logger import logger, setup_logging
 from app.database.database import Base, engine
-from app.core.middleware import LoggingMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
+from app.core.middleware import LoggingMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware, CSRFProtectionMiddleware
 from app.core.exceptions import (
     AtenaAIException, ValidationError, 
     atena_exception_handler, validation_exception_handler, 
@@ -65,9 +66,11 @@ app = FastAPI(
     title=API_TITLE,
     version=API_VERSION,
     description="API de educação com IA para salas de aula virtuais",
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    # 🔒 SEGURANÇA (V7): desabilitar docs/OpenAPI em produção para não expor
+    # o schema completo da API (endpoints, modelos e esquema de auth).
+    docs_url=None if IS_PRODUCTION else "/docs",
+    redoc_url=None if IS_PRODUCTION else "/redoc",
+    openapi_url=None if IS_PRODUCTION else "/openapi.json"
 )
 
 # =====================================================
@@ -108,6 +111,9 @@ app.add_middleware(RateLimitMiddleware)
 # 5. Security headers (added first = innermost middleware)
 app.add_middleware(SecurityHeadersMiddleware)
 
+# 6. CSRF protection (mais interno: bloqueia a mutação antes de chegar ao endpoint)
+app.add_middleware(CSRFProtectionMiddleware)
+
 # =====================================================
 # API PREFIX
 # =====================================================
@@ -133,11 +139,37 @@ app.include_router(users_router, prefix=API_PREFIX, tags=["Users"])
 
 @app.get("/health", tags=["Health"])
 async def health_check():
-    """Endpoint de health check para monitoramento"""
+    """
+    Health check com verificação real de banco (SELECT 1).
+    Se o banco estiver indisponível, retorna 503 para a orquestração
+    (Railway) reiniciar o serviço — em vez de "healthy" com DB morto.
+    """
+    try:
+        from app.database.database import SessionLocal
+        from sqlalchemy import text as sa_text
+
+        db = SessionLocal()
+        try:
+            db.execute(sa_text("SELECT 1"))
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"[HEALTH] Falha ao acessar banco: {e}")
+        return JSONResponse(
+            content={
+                "status": "unhealthy",
+                "version": API_VERSION,
+                "environment": ENVIRONMENT,
+                "database": "error",
+            },
+            status_code=503,
+        )
+
     return {
         "status": "healthy",
         "version": API_VERSION,
-        "environment": ENVIRONMENT
+        "environment": ENVIRONMENT,
+        "database": "ok",
     }
 
 # =====================================================

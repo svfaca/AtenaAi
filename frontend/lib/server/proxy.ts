@@ -33,6 +33,14 @@ export async function proxy(req: Request, path: string) {
       headers['authorization'] = authorization
     }
 
+    // 🔒 Repassar o IP REAL do cliente para o backend (rate limit por IP).
+    // O backend só confia neste header se o peer estiver em TRUSTED_PROXY_IPS.
+    const xff = req.headers.get('x-forwarded-for')
+    if (xff) {
+      const firstIp = xff.split(',')[0].trim()
+      if (firstIp) headers['X-Forwarded-For'] = firstIp
+    }
+
     // Preparar body
     let body: BodyInit | undefined = undefined
     if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -56,13 +64,24 @@ export async function proxy(req: Request, path: string) {
     if (backendRes.status === 307 || backendRes.status === 308) {
       const location = backendRes.headers.get('location')
       if (location) {
-        console.log(`[Proxy] Seguindo redirect ${backendRes.status} para: ${location}`)
-        backendRes = await fetch(location, {
-          method: req.method,
-          headers,
-          body,
-          credentials: 'include',
-        })
+        // 🔒 Segurança: só segue redirect para o PRÓPRIO backend. Seguir uma
+        // Location arbitrária vazaria cookies/Authorization para um host externo.
+        let targetUrl: URL | null = null
+        try {
+          targetUrl = new URL(location, API_URL)
+        } catch {
+          targetUrl = null
+        }
+
+        if (targetUrl && targetUrl.origin === new URL(API_URL).origin) {
+          console.log(`[Proxy] Seguindo redirect ${backendRes.status} para: ${location}`)
+          backendRes = await fetch(targetUrl.toString(), {
+            method: req.method,
+            headers,
+            body,
+            credentials: 'include',
+          })
+        }
       }
     }
 
@@ -107,6 +126,13 @@ export async function proxy(req: Request, path: string) {
       }
     }
 
+    // 🔥 Propagar headers de rate limit (o client usa para exibir o limite
+    // restante e o CTA de criação de conta quando o limite diário acaba)
+    const rateRemaining = backendRes.headers.get('x-ratelimit-remaining')
+    const rateReset = backendRes.headers.get('x-ratelimit-reset')
+    if (rateRemaining) responseHeaders['X-RateLimit-Remaining'] = rateRemaining
+    if (rateReset) responseHeaders['X-RateLimit-Reset'] = rateReset
+
     // Retornar resposta
     return new NextResponse(text, {
       status: backendRes.status,
@@ -137,6 +163,13 @@ export async function proxyStream(req: Request, path: string) {
       headers['cookie'] = cookie
     }
 
+    // 🔒 Repassar o IP REAL do cliente para o backend (rate limit por IP).
+    const xffStream = req.headers.get('x-forwarded-for')
+    if (xffStream) {
+      const firstIp = xffStream.split(',')[0].trim()
+      if (firstIp) headers['X-Forwarded-For'] = firstIp
+    }
+
     let body: BodyInit | undefined = undefined
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       body = await req.text()
@@ -153,10 +186,37 @@ export async function proxyStream(req: Request, path: string) {
     if (!backendRes.ok) {
       const errorText = await backendRes.text()
       console.error(`[Proxy Stream] Backend error ${backendRes.status} for ${path}:`, errorText)
-      return NextResponse.json(
-        { error: `Backend error: ${backendRes.status}`, detail: errorText },
-        { status: backendRes.status }
-      )
+
+      // 🔒 Propagação de erro estruturado (ex.: 429 GUEST_DAILY_LIMIT do chat
+      // público). O client exibe o CTA de criação de conta quando o limite
+      // diário de mensagens gratuitas é atingido.
+      let payload: Record<string, unknown> = {
+        error: `Backend error: ${backendRes.status}`,
+        detail: errorText.slice(0, 500),
+      }
+      try {
+        const parsed = JSON.parse(errorText)
+        if (parsed && typeof parsed === 'object') {
+          const detail = (parsed as any).detail
+          if (detail && typeof detail === 'object') {
+            // Backend respondeu com detail estruturado:
+            // {error_code, error, remaining, resetInSeconds}
+            payload = { ...detail }
+          } else {
+            payload = { ...(parsed as Record<string, unknown>) }
+          }
+        }
+      } catch {
+        // Corpo não-JSON: mantém o payload genérico
+      }
+
+      const headers: Record<string, string> = {}
+      const remaining = backendRes.headers.get('x-ratelimit-remaining')
+      const reset = backendRes.headers.get('x-ratelimit-reset')
+      if (remaining) headers['X-RateLimit-Remaining'] = remaining
+      if (reset) headers['X-RateLimit-Reset'] = reset
+
+      return NextResponse.json(payload, { status: backendRes.status, headers })
     }
 
     // 🔥 Propagar cookies de resposta (Set-Cookie) do backend para o navegador
@@ -174,6 +234,12 @@ export async function proxyStream(req: Request, path: string) {
         responseHeaders['Set-Cookie'] += `, ${setCookie}`
       }
     }
+
+    // 🔥 Propagar headers de rate limit (limite diário de visitantes)
+    const rateRemaining = backendRes.headers.get('x-ratelimit-remaining')
+    const rateReset = backendRes.headers.get('x-ratelimit-reset')
+    if (rateRemaining) responseHeaders['X-RateLimit-Remaining'] = rateRemaining
+    if (rateReset) responseHeaders['X-RateLimit-Reset'] = rateReset
 
     // 🔥 CRÍTICO (Next.js/Node runtime): repassar `backendRes.body` (stream undici
     // do fetch) direto no `NextResponse` lança "Cannot read private member #state

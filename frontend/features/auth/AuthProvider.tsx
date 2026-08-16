@@ -5,7 +5,7 @@ import { mutate } from "swr"
 import * as authService from "./services/auth.service"
 import { AuthUser } from "./types/auth.types"
 import { useChatStore } from "@/stores"
-import { refreshAccessToken, setMemoryToken } from "@/lib/api"
+import { refreshAccessToken } from "@/lib/api"
 
 type AuthContextType = {
   user: AuthUser | null
@@ -60,18 +60,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        // 🔥 PASSO 1: Tentar refresh para restaurar memoryToken
-        // Isso garante que as chamadas API subsequentes tenham Bearer token
-        console.log('[AuthProvider] Tentando refresh inicial para restaurar token...')
-        try {
-          await refreshAccessToken()
-          console.log('[AuthProvider] Refresh inicial OK, memoryToken restaurado')
-        } catch (refreshError) {
-          console.warn('[AuthProvider] Refresh inicial falhou, tentando mesmo assim:', refreshError)
-          // Não desistir - pode ser que o token ainda esteja válido via cookie
+        // 🔒 PASSO 1: tentar carregar o usuário direto (access token ainda
+        // válido) — evita rotacionar o refresh token a cada page load.
+        const data = await authService.getCurrentUser()
+
+        if (!data?.user) {
+          // 🔒 PASSO 2: access expirado/ausente → renovar via refresh_token
+          // (rotação) e tentar de novo.
+          try {
+            await refreshAccessToken()
+            console.log('[AuthProvider] Refresh inicial OK, cookies renovados')
+          } catch (refreshError) {
+            console.warn('[AuthProvider] Refresh inicial falhou:', refreshError)
+          }
         }
 
-        // 🔥 PASSO 2: Carregar dados do usuário (agora com memoryToken disponível)
+        // 🔒 PASSO 3: sincronizar usuário via cookie HttpOnly
         await syncUserFromBackend()
       } catch {
         clearSessionHintCookie()
@@ -90,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(data.user)
     useChatStore.getState().resetChat()
     
-    // 🔥 O token já foi armazenado em memória pelo auth.service.login
+    // 🔒 Autenticação via cookie HttpOnly (route handler /api/auth/login)
     // Revalidate all SWR caches after login
     await mutate(() => true)
     
@@ -100,7 +104,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function logout() {
     await authService.logout()
     clearSessionHintCookie()
-    setMemoryToken(null) // 🔥 Limpar token em memória
     setUser(null)
     useChatStore.getState().resetChat()
   }

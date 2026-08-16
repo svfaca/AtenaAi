@@ -1,11 +1,11 @@
 /**
  * ✅ REAL REFRESH TOKEN IMPLEMENTATION:
  * 
- * 1. Access Token: 15 minutos (SHORT)
+ * 1. Access Token: 8 horas (SHORT)
  *    - HttpOnly cookie
  *    - Usado para requests
  * 
- * 2. Refresh Token: 7 dias (LONG)
+ * 2. Refresh Token: 14 dias (LONG)
  *    - HttpOnly cookie
  *    - Usado para renovar access token
  *    - Rotacionado a cada refresh
@@ -16,32 +16,14 @@
  *    - Backend gera novo access_token + novo refresh_token
  *    - Retry automático
  *    - Se falhar: logout gracioso
+ * 
+ * 🔒 SEGURANÇA (V5): tokens nunca são armazenados no cliente (nem memória).
+ * Toda autenticação é via cookie HttpOnly (credentials: 'include').
  */
 
 // 🔒 Controla retries para evitar loop infinito em 401
 let isRefreshing = false;
 let refreshPromise: Promise<void> | null = null;
-
-// 🔑 Token store in memory (fallback quando cookies HttpOnly não funcionam)
-let memoryToken: string | null = null;
-
-// 🔓 Rotas que NÃO exigem token (login/signup/refresh/check-email).
-// Nessas rotas a ausência de memoryToken é esperada e não deve gerar warning.
-const AUTH_PUBLIC_PATHS = [
-  "/api/auth/login",
-  "/api/auth/signup",
-  "/api/auth/refresh",
-  "/api/auth/logout",
-  "/api/auth/check-email",
-];
-
-export function setMemoryToken(token: string | null) {
-  memoryToken = token;
-}
-
-export function getMemoryToken(): string | null {
-  return memoryToken;
-}
 
 export async function api<T = unknown>(
   path: string,
@@ -83,7 +65,6 @@ export async function api<T = unknown>(
       : `/${apiPath}`;
 
   try {
-    // 🔥 Se temos token em memória, enviar como Bearer (fallback para cookie)
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       ...(typeof options.headers === "object"
@@ -91,15 +72,6 @@ export async function api<T = unknown>(
         : {}),
     };
 
-    // 🔥 Sempre enviar Authorization Bearer se token em memória existir
-    if (memoryToken) {
-      headers["Authorization"] = `Bearer ${memoryToken}`;
-      console.log(`[API] Enviando Authorization Bearer para ${path}`);
-    } else if (!AUTH_PUBLIC_PATHS.includes(path)) {
-      // ⚠️ Warning APENAS para rotas autenticadas.
-      // Para login/signup/refresh/check-email a ausência de token é COMPORTAMENTO NORMAL.
-      console.warn(`[API] Sem memoryToken (rota autenticada): ${path}`);
-    }
 
     const response = await fetch(normalizedPath, {
       credentials: "include", // ✅ Inclui HttpOnly cookies automaticamente
@@ -186,18 +158,9 @@ export async function refreshAccessToken(): Promise<void> {
     throw new Error("Falha ao renovar token");
   }
 
-  // 🔥 Atualizar token em memória se o refresh retornou um novo
-  try {
-    const data = await response.json();
-    if (data.access_token) {
-      setMemoryToken(data.access_token);
-      console.log('[refreshAccessToken] Token armazenado em memória com sucesso')
-    } else {
-      console.warn('[refreshAccessToken] Resposta não contém access_token:', Object.keys(data))
-    }
-  } catch (e) {
-    console.error('[refreshAccessToken] Erro ao parsear resposta:', e)
-  }
+  // 🔒 SEGURANÇA (V5): o refresh renova apenas cookies HttpOnly no domínio do
+  // frontend (route handler /api/auth/refresh). Não há mais token em memória
+  // para armazenar — reduz superfície de roubo via XSS.
 }
 
 /**

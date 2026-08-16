@@ -6,8 +6,9 @@ Create Date: 2026-08-03 12:15:00.000000
 
 """
 from typing import Sequence, Union
+
 from alembic import op
-from sqlalchemy import Column, Enum, String, Date, DateTime, Text, Integer
+import sqlalchemy as sa
 
 
 revision: str = "b3d5f8e9c2a1"
@@ -16,121 +17,41 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-# Enum compatível — recriar sem dependência do UserRole
-user_role_enum = Enum("student", "teacher", "admin", name="userrole")
-
-
 def upgrade() -> None:
-    """Add missing columns using IF NOT EXISTS pattern."""
+    """Add missing columns using idempotent, cross-database checks.
 
-    # Colunas críticas
-    op.execute("""
-        DO $$
-        BEGIN
-            IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns
-                WHERE table_name = 'users' AND column_name = 'role'
-            ) THEN
-                ALTER TABLE users ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'student';
-            END IF;
-        END $$;
-    """)
+    Originalmente usava DO $$ (Postgres-only), o que quebrava `alembic upgrade
+    head` em bancos SQLite novos. A versão por inspector funciona em SQLite e
+    Postgres e é idempotente (não conflita com a branch b12f4e8a9c31, que
+    também adiciona deleted_by/delete_scheduled_at).
+    """
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
 
-    op.execute("""
-        DO $$
-        BEGIN
-            IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns
-                WHERE table_name = 'users' AND column_name = 'nickname'
-            ) THEN
-                ALTER TABLE users ADD COLUMN nickname VARCHAR(255);
-            END IF;
-        END $$;
-    """)
+    if "users" not in inspector.get_table_names():
+        return
 
-    op.execute("""
-        DO $$
-        BEGIN
-            IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns
-                WHERE table_name = 'users' AND column_name = 'interests'
-            ) THEN
-                ALTER TABLE users ADD COLUMN interests TEXT;
-            END IF;
-        END $$;
-    """)
+    existing = {col["name"] for col in inspector.get_columns("users")}
 
-    op.execute("""
-        DO $$
-        BEGIN
-            IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns
-                WHERE table_name = 'users' AND column_name = 'profile_image'
-            ) THEN
-                ALTER TABLE users ADD COLUMN profile_image VARCHAR(500);
-            END IF;
-        END $$;
-    """)
+    column_defs = {
+        "role": sa.Column(
+            "role", sa.String(length=20), nullable=False, server_default="student"
+        ),
+        "nickname": sa.Column("nickname", sa.String(length=255), nullable=True),
+        "interests": sa.Column("interests", sa.Text(), nullable=True),
+        "profile_image": sa.Column("profile_image", sa.String(length=500), nullable=True),
+        "gender": sa.Column("gender", sa.String(length=50), nullable=True),
+        "birth_date": sa.Column("birth_date", sa.Date(), nullable=True),
+        "deleted_at": sa.Column("deleted_at", sa.DateTime(), nullable=True),
+        "deleted_by": sa.Column("deleted_by", sa.Integer(), nullable=True),
+        "delete_scheduled_at": sa.Column(
+            "delete_scheduled_at", sa.DateTime(), nullable=True
+        ),
+    }
 
-    op.execute("""
-        DO $$
-        BEGIN
-            IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns
-                WHERE table_name = 'users' AND column_name = 'gender'
-            ) THEN
-                ALTER TABLE users ADD COLUMN gender VARCHAR(50);
-            END IF;
-        END $$;
-    """)
-
-    op.execute("""
-        DO $$
-        BEGIN
-            IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns
-                WHERE table_name = 'users' AND column_name = 'birth_date'
-            ) THEN
-                ALTER TABLE users ADD COLUMN birth_date DATE;
-            END IF;
-        END $$;
-    """)
-
-    op.execute("""
-        DO $$
-        BEGIN
-            IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns
-                WHERE table_name = 'users' AND column_name = 'deleted_at'
-            ) THEN
-                ALTER TABLE users ADD COLUMN deleted_at TIMESTAMP;
-            END IF;
-        END $$;
-    """)
-
-    op.execute("""
-        DO $$
-        BEGIN
-            IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns
-                WHERE table_name = 'users' AND column_name = 'deleted_by'
-            ) THEN
-                ALTER TABLE users ADD COLUMN deleted_by INTEGER;
-            END IF;
-        END $$;
-    """)
-
-    op.execute("""
-        DO $$
-        BEGIN
-            IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns
-                WHERE table_name = 'users' AND column_name = 'delete_scheduled_at'
-            ) THEN
-                ALTER TABLE users ADD COLUMN delete_scheduled_at TIMESTAMP;
-            END IF;
-        END $$;
-    """)
+    for col_name, column in column_defs.items():
+        if col_name not in existing:
+            op.add_column("users", column)
 
 
 def downgrade() -> None:

@@ -1,4 +1,4 @@
-import { api, setMemoryToken } from "@/lib/api"
+import { api } from "@/lib/api"
 import { LoginRequest, SignupRequest, AuthResponse } from "../types/auth.types"
 
 type DeleteAccountPayload = {
@@ -17,17 +17,12 @@ function normalizeAuthResponse(payload: any): AuthResponse {
 }
 
 export async function login(data: LoginRequest): Promise<AuthResponse> {
-  const response = await api<AuthResponse & { access_token?: string }>("/api/auth/login", {
+  // 🔒 SEGURANÇA (V5): o token NÃO é mais retornado/armazenado no cliente.
+  // Autenticação é 100% via cookie HttpOnly (credentials: 'include').
+  return api<AuthResponse>("/api/auth/login", {
     method: "POST",
     body: JSON.stringify(data)
   })
-  
-  // 🔥 Armazenar token em memória como fallback para cookies HttpOnly
-  if ((response as any).access_token) {
-    setMemoryToken((response as any).access_token)
-  }
-  
-  return response
 }
 
 export async function signup(data: SignupRequest): Promise<AuthResponse> {

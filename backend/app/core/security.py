@@ -1,15 +1,17 @@
 import bcrypt
 from datetime import datetime, timedelta
 from jose import jwt
-import os
 from typing import Optional
 
-from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES as CONFIG_ACCESS_TOKEN_EXPIRE_MINUTES
-
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-in-production")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = CONFIG_ACCESS_TOKEN_EXPIRE_MINUTES  # from config (env: ACCESS_TOKEN_EXPIRE_MINUTES, default: 21600 = 15d)
-REFRESH_TOKEN_EXPIRE_DAYS = 7     # 🔒 LONG-LIVED
+# 🔒 FONTE ÚNICA DE VERDADE: todos os segredos vêm de app.core.config.
+# Antes havia um fallback hardcoded aqui ("dev-secret-change-in-production"),
+# o que permitiria forjar JWTs com chave conhecida se o config não abortasse.
+from app.core.config import (
+    SECRET_KEY,
+    ALGORITHM,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    REFRESH_TOKEN_EXPIRE_DAYS,
+)
 
 # ========================================================
 # 1. FUNÇÃO PRINCIPAL DE HASH
@@ -58,17 +60,26 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 # ========================================================
 # 5. CRIAÇÃO DE REFRESH TOKEN (NOVO)
 # ========================================================
-def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None):
+def create_refresh_token(
+    data: dict,
+    ver: int = 0,
+    expires_delta: Optional[timedelta] = None,
+):
     """
-    🔒 Refresh token longo (7 dias)
-    Armazenado no banco e em cookie HttpOnly
+    🔒 Refresh token longo (REFRESH_TOKEN_EXPIRE_DAYS)
+    Armazenado em cookie HttpOnly.
+
+    `ver` = token_version do usuário no momento da emissão.
+    Na validação, se o token carregar um `ver` diferente do
+    token_version atual do usuário (ex.: após logout), o token
+    é rejeitado com 401 — permitindo revogação de sessões.
     """
     to_encode = data.copy()
-    
+
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-        
-    to_encode.update({"exp": expire, "type": "refresh"})
+
+    to_encode.update({"exp": expire, "type": "refresh", "ver": int(ver)})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)

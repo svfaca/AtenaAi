@@ -73,12 +73,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 🔥 PREFERIR token do body (backend agora retorna access_token explicitamente)
-    // Fallback para token parseado do Set-Cookie
-    const bodyAccessToken = data.access_token || null
-    const finalAccessToken = bodyAccessToken || accessTokenFromCookie
-
-    console.log('[Auth/Refresh] Token do body:', !!bodyAccessToken, 'Token do cookie:', !!accessTokenFromCookie)
+    // 🔒 SEGURANÇA (V5): o backend NÃO retorna mais o token no body.
+    // O token é obtido apenas do Set-Cookie do backend (cookie HttpOnly).
 
     const isProduction = process.env.NODE_ENV === 'production'
     const cookieOptions = {
@@ -92,25 +88,22 @@ export async function POST(request: NextRequest) {
       {
         message: 'Token renovado com sucesso',
         user: data.user,
-        // 🔥 Retornar novo access_token para o frontend armazenar em memória
-        access_token: finalAccessToken,
       },
       { status: 200 }
     )
 
     // Recriar cookies para o domínio do frontend
-    // Usar token do body como fonte primária para o cookie
-    const cookieTokenValue = bodyAccessToken || accessTokenFromCookie
+    const cookieTokenValue = accessTokenFromCookie
     if (cookieTokenValue) {
       result.cookies.set('access_token', cookieTokenValue, cookieOptions)
       console.log('[Auth/Refresh] Cookie access_token recriado com sucesso')
     }
     
-    const cookieRefreshValue = data.refresh_token || refreshTokenFromCookie
+    const cookieRefreshValue = refreshTokenFromCookie
     if (cookieRefreshValue) {
       result.cookies.set('refresh_token', cookieRefreshValue, {
         ...cookieOptions,
-        maxAge: 7 * 24 * 60 * 60,
+        maxAge: 14 * 24 * 60 * 60,
       })
       console.log('[Auth/Refresh] Cookie refresh_token recriado com sucesso')
     }

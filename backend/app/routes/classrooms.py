@@ -16,7 +16,7 @@ from app.schemas.teacher import (
     ClassroomMemberCreate, ClassroomMemberUpdate, ClassroomMemberResponse, 
     ClassroomWithMembersResponse
 )
-from app.utils.classroom_code import generate_classroom_code
+from app.utilities.classroom_code import generate_classroom_code
 
 router = APIRouter(
     prefix="/classrooms",

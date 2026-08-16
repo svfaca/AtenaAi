@@ -77,7 +77,7 @@ export default function PublicHeader() {
             // Authenticated: Show Dashboard + Logout
             <>
               <Link
-                href={user.role === "teacher" ? "/app-area/professor" : "/app-area/estudante"}
+                href={user.role === "teacher" ? "/teacher" : "/scholar"}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
               >
                 Dashboard
@@ -177,7 +177,7 @@ export default function PublicHeader() {
                   <span className="text-sm font-medium">{userDisplayName}</span>
                 </div>
                 <Link
-                  href={user.role === "teacher" ? "/app-area/professor" : "/app-area/estudante"}
+                  href={user.role === "teacher" ? "/teacher" : "/scholar"}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium text-center"
                 >
                   Dashboard

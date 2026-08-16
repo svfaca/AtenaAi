@@ -6,7 +6,7 @@
  */
 
 import { cookies } from 'next/headers';
-import type { Classroom, ConversationsResponse, Message } from "./types";
+import type { Classroom, ConversationsResponse } from "./types";
 
 const API_BASE_URL = process.env.BACKEND_URL || "https://web-production-110f3.up.railway.app";
 
@@ -89,53 +89,6 @@ export async function getStudentClassrooms(): Promise<Classroom[]> {
 export async function getStudentConversations(limit = 25, offset = 0): Promise<ConversationsResponse> {
   const params = new URLSearchParams({ limit: limit.toString(), offset: offset.toString() });
   return serverApi<ConversationsResponse>(`/api/v1/conversations?${params}`, {
-    method: "GET"
-  });
-}
-
-/**
- * 📝 Buscar mensagens de uma conversa
- */
-export async function getConversationMessages(conversationId: number, limit = 50): Promise<Message[]> {
-  const params = new URLSearchParams({ limit: limit.toString() });
-  return serverApi<Message[]>(`/api/v1/conversations/${conversationId}/messages?${params}`, {
-    method: "GET"
-  });
-}
-
-/**
- * 📬 Buscar mensagens de uma sala
- */
-export async function getClassroomMessages(classroomId: number | string, limit = 50): Promise<Message[]> {
-  const params = new URLSearchParams({ limit: limit.toString() });
-  return serverApi<Message[]>(`/api/v1/classrooms/${classroomId}/messages?${params}`, {
-    method: "GET"
-  });
-}
-
-/**
- * 👤 Buscar dados do usuário atual
- */
-export async function getCurrentUser() {
-  return serverApi("/api/v1/auth/me", {
-    method: "GET"
-  });
-}
-
-/**
- * 🏫 Buscar detalhes de uma sala
- */
-export async function getClassroomDetails(classroomId: number | string): Promise<Classroom> {
-  return serverApi<Classroom>(`/api/v1/classrooms/${classroomId}`, {
-    method: "GET"
-  });
-}
-
-/**
- * 💬 Buscar detalhes de uma conversa
- */
-export async function getConversationDetails(conversationId: number) {
-  return serverApi(`/api/v1/conversations/${conversationId}`, {
     method: "GET"
   });
 }

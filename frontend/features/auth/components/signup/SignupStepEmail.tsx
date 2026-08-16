@@ -47,8 +47,8 @@ export function SignupStepEmail({ form, setForm, next }: Props) {
     }
 
     // Validação de senha
-    if (form.password.length < 6) {
-      const msg = "A senha deve ter no mínimo 6 caracteres"
+    if (form.password.length < 8) {
+      const msg = "A senha deve ter no mínimo 8 caracteres"
       setError(msg)
       errorToast(msg)
       return

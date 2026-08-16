@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  backend-tests:
+    name: Backend - testes de segurança
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Instalar dependências (pinadas)
+        run: pip install -r requirements.txt
+      - name: Rodar suite de segurança (V1-V12)
+        run: python tests/test_security_changes.py
+
+  backend-audit:
+    name: Backend - pip-audit (CVEs)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    # TODO: remover continue-on-error e tornar este job BLOQUEANTE
+    # depois de zerar os CVEs reportados nas versões pinadas.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Instalar pip-audit
+        run: pip install pip-audit
+      - name: Auditar dependências contra CVEs públicos
+        run: pip-audit -r requirements.txt
+
+  frontend-build:
+    name: Frontend - typecheck + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Instalar dependências (package-lock)
+        run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Build de produção
+        run: npm run build
+
+  frontend-audit:
+    name: Frontend - npm audit (CVEs)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    # TODO: remover continue-on-error e tornar este job BLOQUEANTE
+    # depois de zerar os CVEs reportados nas dependências JS.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Instalar dependências (package-lock)
+        run: npm ci
+      - name: Auditar dependências JS
+        run: npm audit --audit-level=high
