@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useMemo, useEffect, type ReactNode } from 'react';
+import { useState, useMemo, useEffect, useRef, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useThemeMode } from '@/lib/hooks/useThemeMode';
@@ -66,9 +66,16 @@ export default function StudentArea({ userName, userAvatar, children }: StudentA
     return userName?.trim()?.charAt(0)?.toUpperCase() || 'U';
   }, [userName]);
 
-  // Fechar sidebar mobile quando qualquer item abrir
+  // Fechar a sidebar mobile somente quando o usuário navegar (mudar de visualização)
+  // enquanto ela está aberta. Antes, `viewType` nunca é null (default: 'new-conversation'),
+  // então o efeito fechava a sidebar imediatamente após abrir (bug no mobile).
+  const lastViewTypeRef = useRef(navigationState.viewType);
+
   useEffect(() => {
-    if (navigationState.viewType && isMobileSidebarOpen) {
+    const lastViewType = lastViewTypeRef.current;
+    lastViewTypeRef.current = navigationState.viewType;
+
+    if (isMobileSidebarOpen && navigationState.viewType !== lastViewType) {
       setIsMobileSidebarOpen(false);
     }
   }, [navigationState.viewType, isMobileSidebarOpen]);
@@ -116,7 +123,7 @@ export default function StudentArea({ userName, userAvatar, children }: StudentA
           mobileMenuButton={
             <button
               aria-label="Abrir menu lateral"
-              className="mr-3 rounded p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 md:hidden"
+              className="mr-3 rounded p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 lg:hidden"
               onClick={() => setIsMobileSidebarOpen(true)}
             >
               <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
