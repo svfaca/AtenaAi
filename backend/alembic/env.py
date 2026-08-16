@@ -1,4 +1,3 @@
-import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -15,13 +14,16 @@ from app.models import *  # noqa: F401, F403
 # access to the values within the .ini file in use.
 config = context.config
 
-# 🔒 Se DATABASE_URL estiver definida no ambiente (ex.: Railway/Postgres de
-# produção), sobrescreve a URL fixa do alembic.ini (SQLite de desenvolvimento).
-# Isso permite aplicar as migrations em qualquer banco sem editar o arquivo:
+# 🔒 Se DATABASE_URL estiver definida, sobrescreve a URL fixa do alembic.ini
+# (SQLite de desenvolvimento) para rodar as migrations no banco correto:
 #   $env:DATABASE_URL="postgresql://user:pass@host/db" ; alembic upgrade head
-# Em dev (sem a env var), o comportamento continua o mesmo (SQLite local).
-if os.getenv("DATABASE_URL"):
-    config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL"))
+# Usa a MESMA resolução do app (app.core.config): corrige o bug de "\n" no
+# Railway e monta a URL a partir de PG*/POSTGRES_URL quando necessário.
+# Em dev (sem env var), o comportamento continua o mesmo (SQLite local).
+from app.core.config import DATABASE_URL
+
+if DATABASE_URL:
+    config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

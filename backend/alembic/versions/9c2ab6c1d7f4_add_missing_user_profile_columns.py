@@ -9,7 +9,6 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy import text
 
 
 # revision identifiers, used by Alembic.
@@ -20,9 +19,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def _get_table_columns(table_name: str) -> set[str]:
+    # 🔒 Compatível com SQLite E PostgreSQL (PRAGMA table_info é SQLite-only
+    # e quebrava `alembic upgrade head` em produção).
     bind = op.get_bind()
-    rows = bind.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
-    return {row[1] for row in rows}
+    inspector = sa.inspect(bind)
+    return {col["name"] for col in inspector.get_columns(table_name)}
 
 
 def upgrade() -> None:
