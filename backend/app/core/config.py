@@ -181,7 +181,7 @@ DB_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "3600"))
 # CORS CONFIG - VALIDADO
 # =========================================================
 
-DEFAULT_CORS = "https://atenaai.savioemmanuel.com.br,https://atena-ai.vercel.app,https://atena-ai-suporte.vercel.app,http://127.0.0.1:5500,http://localhost:5500,http://127.0.0.1:3000,http://localhost:3000"
+DEFAULT_CORS = "https://atenaai.savioemmanuel.com.br,https://atena-ai-suporte.vercel.app,http://127.0.0.1:5500,http://localhost:5500,http://127.0.0.1:3000,http://localhost:3000"
 CORS_ORIGINS_STR = getenv_railway("CORS_ORIGINS", DEFAULT_CORS)
 CORS_ORIGINS = [origin.strip() for origin in CORS_ORIGINS_STR.split(",") if origin.strip()]
 
