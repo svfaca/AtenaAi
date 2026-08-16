@@ -114,6 +114,7 @@ def register(
             if BOOTSTRAP_ADMIN_EMAIL and normalized_email == BOOTSTRAP_ADMIN_EMAIL:
                 role = UserRole.admin
             existing_user.role = role.value
+            existing_user.account_type = role.value
 
             db.add(existing_user)
             db.commit()
@@ -158,7 +159,8 @@ def register(
             birth_date=user.birth_date,
             gender=user.gender,
             interests=normalize_interests(user.interests),
-            role=role.value
+            role=role.value,
+            account_type=role.value,
         )
         
         logger.info(f"[REGISTRO] Usuário criado em memória: {new_user.email}")

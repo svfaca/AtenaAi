@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Enum
+from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Enum, text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
@@ -33,6 +33,15 @@ class User(Base):
         Enum(UserRole),
         default=UserRole.student,
         nullable=False
+    )
+
+    # 🔥 Tipo de conta — espelho de `role` para compatibilidade com o schema legado.
+    # Coluna NOT NULL sem default no Postgres de produção; o modelo precisa setá-la.
+    account_type = Column(
+        String,
+        nullable=False,
+        default="student",
+        server_default=text("'student'"),
     )
 
     # ========================
