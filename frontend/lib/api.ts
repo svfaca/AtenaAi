@@ -25,6 +25,16 @@ let refreshPromise: Promise<void> | null = null;
 // 🔑 Token store in memory (fallback quando cookies HttpOnly não funcionam)
 let memoryToken: string | null = null;
 
+// 🔓 Rotas que NÃO exigem token (login/signup/refresh/check-email).
+// Nessas rotas a ausência de memoryToken é esperada e não deve gerar warning.
+const AUTH_PUBLIC_PATHS = [
+  "/api/auth/login",
+  "/api/auth/signup",
+  "/api/auth/refresh",
+  "/api/auth/logout",
+  "/api/auth/check-email",
+];
+
 export function setMemoryToken(token: string | null) {
   memoryToken = token;
 }
@@ -85,8 +95,10 @@ export async function api<T = unknown>(
     if (memoryToken) {
       headers["Authorization"] = `Bearer ${memoryToken}`;
       console.log(`[API] Enviando Authorization Bearer para ${path}`);
-    } else {
-      console.log(`[API] Sem memoryToken para ${path}`);
+    } else if (!AUTH_PUBLIC_PATHS.includes(path)) {
+      // ⚠️ Warning APENAS para rotas autenticadas.
+      // Para login/signup/refresh/check-email a ausência de token é COMPORTAMENTO NORMAL.
+      console.warn(`[API] Sem memoryToken (rota autenticada): ${path}`);
     }
 
     const response = await fetch(normalizedPath, {
