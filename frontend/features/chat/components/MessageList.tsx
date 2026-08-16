@@ -9,6 +9,7 @@ export interface Message {
   content: string;
   role: 'user' | 'assistant' | 'system';
   timestamp?: Date;
+  status?: 'sending' | 'streaming' | 'done' | 'error';
 }
 
 type MessageListProps = {
@@ -88,6 +89,7 @@ export default function MessageList({
                 <TextMessage
                   content={message.content}
                   role={message.role === 'user' ? 'user' : 'assistant'}
+                  status={message.status}
                 />
               )}
             </div>

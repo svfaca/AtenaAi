@@ -15,6 +15,7 @@ export default function ChatWindow() {
         content: message.content,
         role: message.role === 'user' ? 'user' : 'assistant',
         timestamp: message.created_at ? new Date(message.created_at) : undefined,
+        status: message.status,
       })),
     [messages]
   )
