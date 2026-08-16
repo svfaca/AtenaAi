@@ -8,6 +8,7 @@ import { useClassroomView } from '@/features/classrooms/hooks/useClassroomView';
 import { useNavigationState } from '@/features/navigation/hooks/useNavigationState';
 import { useChat } from '@/features/chat/hooks';
 import { useNotification } from '@/lib/hooks/useNotification';
+import { useUIStore } from '@/stores';
 import SidebarRooms from '@/features/student/components/SidebarRooms';
 import JoinClassroomModal from '@/features/classrooms/components/modals/JoinClassroomModal';
 
@@ -46,6 +47,7 @@ export default function RoomsSidebarSection({
   const { selectConversation } = useChat();
   const navigationState = useNavigationState();
   const { success, error: errorToast } = useNotification();
+  const closeMobileSidebar = useUIStore((state) => state.closeMobileSidebar);
 
   // Business logic handlers
   const handleJoinRoom = () => {
@@ -130,6 +132,8 @@ export default function RoomsSidebarSection({
     }
 
     closeAbout();
+    // Fechar a sidebar mobile ao navegar
+    closeMobileSidebar();
     
     // Fechar conversa automaticamente ao abrir sala
     selectConversation(null);

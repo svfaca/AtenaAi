@@ -164,10 +164,20 @@ export default function TeacherPageClient({ teacherName }: TeacherPageClientProp
 			footer={({ isCollapsed }) => (
 				<SidebarFooter
 					isCollapsed={isCollapsed}
-					onOpenSettings={() => setIsSettingsOpen(true)}
+					onOpenSettings={() => {
+						closeMobileSidebar();
+						setIsSettingsOpen(true);
+					}}
 					onLogout={handleLogout}
 					aboutLabel={isAboutOpen ? 'Fechar' : 'Sobre'}
-					onAboutClick={isAboutOpen ? closeAbout : openAbout}
+					onAboutClick={() => {
+						closeMobileSidebar();
+						if (isAboutOpen) {
+							closeAbout();
+						} else {
+							openAbout();
+						}
+					}}
 				/>
 			)}
 		/>

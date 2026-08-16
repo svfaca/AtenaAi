@@ -5,6 +5,7 @@ import { useChat } from '@/features/chat/hooks'
 import { useAboutModal } from '@/features/about'
 import { useNavigationState } from '@/features/navigation/hooks/useNavigationState'
 import { useNotification } from '@/lib/hooks/useNotification'
+import { useUIStore } from '@/stores'
 import SidebarConversations from '@/features/student/components/SidebarConversations'
 
 type ConversationsSidebarSectionProps = {
@@ -26,6 +27,7 @@ export default function ConversationsSidebarSection({
   const { closeAbout } = useAboutModal()
   const { success, error: errorToast } = useNotification()
   const navigationState = useNavigationState()
+  const closeMobileSidebar = useUIStore((state) => state.closeMobileSidebar)
 
   const {
     conversations,
@@ -47,6 +49,8 @@ export default function ConversationsSidebarSection({
 
   const handleNewConversation = async () => {
     closeAbout()
+    // Fechar a sidebar mobile ao navegar (mesmo se já estiver em nova conversa)
+    closeMobileSidebar()
     try {
       // Fechar sala automaticamente ao iniciar conversa
       if (navigationState.viewType === 'classroom') {
@@ -63,6 +67,8 @@ export default function ConversationsSidebarSection({
 
   const handleSelectConversation = async (conversationId: number) => {
     closeAbout()
+    // Fechar a sidebar mobile ao navegar
+    closeMobileSidebar()
     try {
       // Fechar sala automaticamente ao selecionar conversa
       if (navigationState.viewType === 'classroom') {

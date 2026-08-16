@@ -7,6 +7,7 @@ import { useThemeMode } from '@/lib/hooks/useThemeMode';
 import { getLogoUrl } from '@/lib/logo';
 import { useAboutModal, AboutModal } from '@/features/about';
 import { useNavigationState } from '@/features/navigation/hooks/useNavigationState';
+import { useUIStore } from '@/stores';
 import { useAuth } from '@/features/auth';
 import AppShell from '@/shared/layout/AppShell';
 import AppHeader from '@/shared/layout/AppHeader';
@@ -36,8 +37,8 @@ type StudentAreaProps = {
  * - Handle business logic (delegated to feature components)
  */
 export default function StudentArea({ userName, userAvatar, children }: StudentAreaProps) {
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const { isMobileSidebarOpen, openMobileSidebar, closeMobileSidebar } = useUIStore();
   const { theme, toggleTheme } = useThemeMode();
   const { isOpen: isAboutOpen, openAbout, closeAbout } = useAboutModal();
   const navigationState = useNavigationState();
@@ -66,19 +67,30 @@ export default function StudentArea({ userName, userAvatar, children }: StudentA
     return userName?.trim()?.charAt(0)?.toUpperCase() || 'U';
   }, [userName]);
 
-  // Fechar a sidebar mobile somente quando o usuário navegar (mudar de visualização)
-  // enquanto ela está aberta. Antes, `viewType` nunca é null (default: 'new-conversation'),
-  // então o efeito fechava a sidebar imediatamente após abrir (bug no mobile).
-  const lastViewTypeRef = useRef(navigationState.viewType);
+  // Fechar a sidebar mobile sempre que o usuário navegar (mudar de visualização,
+  // conversa ou sala) enquanto ela estiver aberta. A "chave" combina viewType +
+  // conversationId + classroomId para detectar inclusive a troca de conversa A→B
+  // (onde viewType permanece 'conversation').
+  const getNavigationKey = () =>
+    `${navigationState.viewType ?? 'none'}|${navigationState.conversationId ?? 'none'}|${navigationState.classroomId ?? 'none'}`;
+
+  const lastNavigationKeyRef = useRef(getNavigationKey());
 
   useEffect(() => {
-    const lastViewType = lastViewTypeRef.current;
-    lastViewTypeRef.current = navigationState.viewType;
+    const previousKey = lastNavigationKeyRef.current;
+    const currentKey = getNavigationKey();
+    lastNavigationKeyRef.current = currentKey;
 
-    if (isMobileSidebarOpen && navigationState.viewType !== lastViewType) {
-      setIsMobileSidebarOpen(false);
+    if (isMobileSidebarOpen && currentKey !== previousKey) {
+      closeMobileSidebar();
     }
-  }, [navigationState.viewType, isMobileSidebarOpen]);
+  }, [
+    navigationState.viewType,
+    navigationState.conversationId,
+    navigationState.classroomId,
+    isMobileSidebarOpen,
+    closeMobileSidebar,
+  ]);
 
   const logoPath = getLogoUrl(theme);
 
@@ -124,7 +136,7 @@ export default function StudentArea({ userName, userAvatar, children }: StudentA
             <button
               aria-label="Abrir menu lateral"
               className="mr-3 rounded p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 lg:hidden"
-              onClick={() => setIsMobileSidebarOpen(true)}
+              onClick={openMobileSidebar}
             >
               <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -145,7 +157,7 @@ export default function StudentArea({ userName, userAvatar, children }: StudentA
           userAvatar={userAvatar}
           userRole="Estudante"
           isMobileOpen={isMobileSidebarOpen}
-          onCloseMobile={() => setIsMobileSidebarOpen(false)}
+          onCloseMobile={closeMobileSidebar}
           content={({ isCollapsed }) => (
             <>
               <RoomsSidebarSection isCollapsed={isCollapsed} />
@@ -155,10 +167,16 @@ export default function StudentArea({ userName, userAvatar, children }: StudentA
           footer={({ isCollapsed }) => (
             <SidebarFooter
               isCollapsed={isCollapsed}
-              onOpenSettings={() => setSettingsOpen(true)}
+              onOpenSettings={() => {
+                closeMobileSidebar();
+                setSettingsOpen(true);
+              }}
               onLogout={handleLogout}
               aboutLabel={isAboutOpen ? 'Fechar' : 'Sobre'}
-              onAboutClick={handleAboutClick}
+              onAboutClick={() => {
+                closeMobileSidebar();
+                handleAboutClick();
+              }}
             />
           )}
         />
