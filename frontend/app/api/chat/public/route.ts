@@ -64,8 +64,14 @@ export async function POST(request: NextRequest) {
           { role: 'user', content: currentMessage },
         ].slice(-MAX_HISTORY)
 
-    // Create proxy request with normalized payload
-    const proxyRequest = new NextRequest(request, {
+    // 🔥 CRÍTICO: Não clonar o `request` recebido via `new NextRequest(request, ...)`.
+    // O construtor tenta ler o private field `#state` do request de entrada (classe
+    // interna do Next), lançando "Cannot read private member #state from an object
+    // whose class did not declare it" no runtime Node. Construir a partir da URL +
+    // init explícito evita ler o estado privado do request original.
+    const proxyRequest = new NextRequest(request.url, {
+      method: request.method,
+      headers: new Headers(request.headers),
       body: JSON.stringify({
         messages: payloadMessages,
         content: currentMessage,
