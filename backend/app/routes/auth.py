@@ -191,12 +191,14 @@ def register(
         
     except HTTPException:
         raise
-    except IntegrityError:
+    except IntegrityError as exc:
         db.rollback()
-        logger.warning(f"[REGISTRO] Violação de unicidade para email: {user.email}")
+        # 🔴 NÃO assumir que toda IntegrityError é email duplicado.
+        # Pode ser constraint NOT NULL/divergência de schema. Logar o erro real.
+        logger.error(f"[REGISTRO] IntegrityError (erro real): {exc}", exc_info=True)
         raise HTTPException(
             status_code=400,
-            detail="Este email já está registrado."
+            detail="Não foi possível criar a conta. Tente novamente."
         )
     except Exception as e:
         logger.error(f"[REGISTRO] ERRO: {str(e)}", exc_info=True)
