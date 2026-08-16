@@ -1,7 +1,6 @@
 import { AuthProvider } from '@/features/auth';
 import { AboutModalProvider } from '@/features/about';
 import { ClassroomViewProvider } from '@/features/classrooms/hooks/useClassroomView';
-import ThemeToggle from '@/shared/ui/ThemeToggle';
 import ToastContainer from '@/shared/ui/ToastContainer';
 import '@/styles/globals.css';
 
@@ -69,7 +68,6 @@ export default function RootLayout({
           <AboutModalProvider>
             <ClassroomViewProvider>
               {children}
-              <ThemeToggle />
               <ToastContainer />
             </ClassroomViewProvider>
           </AboutModalProvider>
