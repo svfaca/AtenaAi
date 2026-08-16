@@ -140,17 +140,18 @@ export async function api<T = unknown>(
         }
       }
 
+      // 🔎 Extrair mensagem de erro humano do corpo da resposta.
+      // Concede precedência a campos comuns usados por backend (FastAPI `detail`)
+      // e pelos route handlers do frontend (`message`).
       const message =
-        typeof payload === "object" &&
-        payload !== null &&
-        "detail" in payload &&
-        typeof (payload as any).detail === "string"
+        typeof payload === "object" && payload !== null && typeof (payload as any).detail === "string"
           ? (payload as any).detail
-          : typeof payload === "object" &&
-            payload !== null &&
-            "error" in payload &&
-            typeof (payload as any).error === "string"
+          : typeof payload === "object" && payload !== null && typeof (payload as any).error === "string"
           ? (payload as any).error
+          : typeof payload === "object" && payload !== null && typeof (payload as any).message === "string"
+          ? (payload as any).message
+          : typeof payload === "object" && payload !== null && typeof (payload as any).msg === "string"
+          ? (payload as any).msg
           : typeof payload === "string"
           ? payload
           : response.statusText;
