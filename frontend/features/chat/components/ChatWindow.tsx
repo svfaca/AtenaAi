@@ -7,7 +7,7 @@ import MessageInput from './MessageInput'
 import MessageList, { type Message } from './MessageList'
 
 export default function ChatWindow() {
-  const { messages, sendingMessage, sendMessage } = useChat()
+  const { messages, activeConversationId, sendingMessage, sendMessage } = useChat()
   const normalizedMessages = useMemo<Message[]>(
     () =>
       messages.map((message) => ({
@@ -22,9 +22,7 @@ export default function ChatWindow() {
 
   return (
     <section className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto scrollbar-custom">
-        <MessageList messages={normalizedMessages} />
-      </div>
+      <MessageList messages={normalizedMessages} conversationKey={activeConversationId} />
 
       <div className="shrink-0 border-t border-gray-200 bg-white px-4 py-2 dark:border-gray-700 dark:bg-gray-900">
         <MessageInput onSend={sendMessage} disabled={sendingMessage} />
