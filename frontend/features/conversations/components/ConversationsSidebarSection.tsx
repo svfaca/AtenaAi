@@ -45,6 +45,33 @@ export default function ConversationsSidebarSection({
 
   useEffect(() => {
     void stableHydrate()
+
+    // 🔄 Sincronização automática entre dispositivos/abas.
+    // Antes, a sidebar só buscava as conversas NA MONTAGEM — se o usuário
+    // criasse conversas em outro dispositivo (ex: celular) ou outra aba,
+    // elas não apareciam até recarregar a página. Agora a lista é atualizada:
+    // - A cada 30s enquanto a página estiver aberta (polling leve)
+    // - Quando a janela/aba volta ao foco (voltar de outra aba/dispositivo)
+    const REFRESH_INTERVAL_MS = 30_000
+
+    const intervalId = window.setInterval(() => {
+      void stableHydrate()
+    }, REFRESH_INTERVAL_MS)
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void stableHydrate()
+      }
+    }
+
+    window.addEventListener('focus', handleVisibilityChange)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', handleVisibilityChange)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [stableHydrate])
 
   const handleNewConversation = async () => {

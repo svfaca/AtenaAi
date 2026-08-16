@@ -108,9 +108,23 @@ export async function sendPublicMessageWithHistory(
 }
 
 export async function listConversations(): Promise<ConversationListResponse> {
-  return api<ConversationListResponse>(CONVERSATIONS_ENDPOINT, {
+  const data = await api<ConversationListResponse>(CONVERSATIONS_ENDPOINT, {
     method: 'GET',
   });
+
+  // 🔎 Diagnóstico de sincronização entre dispositivos:
+  // Mostra qual backend este build do frontend está usando e quantas
+  // conversas o backend devolveu. Compare o console do CELULAR com o do
+  // DESKTOP — se o URL ou a quantidade divergirem, os dispositivos estão
+  // falando com backends/contas diferentes (por isso não sincronizam).
+  console.info(
+    '[listConversations] NEXT_PUBLIC_API_URL =',
+    process.env.NEXT_PUBLIC_API_URL,
+    '| conversas retornadas =',
+    Array.isArray(data?.items) ? data.items.length : 0,
+  );
+
+  return data;
 }
 
 export async function createConversation(title = 'Nova conversa'): Promise<Conversation> {

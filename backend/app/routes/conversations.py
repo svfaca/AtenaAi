@@ -12,6 +12,7 @@ from app.schemas.message import ChatMessage
 from app.schemas.chat import ConversationResponse
 from app.schemas.pagination import PaginationParams, PaginatedResponse
 from app.core.dependencies import get_current_user, get_db
+from app.core.logger import log_event
 from app.services.ai_service import generate_ai_response, generate_ai_response_stream
 from app.core.config import AI_MODEL
 from app.utilities.interests import parse_interests
@@ -40,13 +41,26 @@ def list_conversations(
 ):
     """List user conversations with pagination and eager loading of messages"""
     
-    # Set cache header - personal data cached for 5 minutes
-    response.headers["Cache-Control"] = "private, max-age=300"
+    # Dados pessoais que mudam a cada mensagem/dispositivo: nunca cachear.
+    # Cache (ex: max-age) faz o desktop mostrar conversas desatualizadas
+    # criadas no celular até o cache expirar.
+    response.headers["Cache-Control"] = "no-store"
     
     # Total count
     total = db.query(Conversation).filter(
         Conversation.user_id == user.id
     ).count()
+
+    # 🔎 Diagnóstico: mostra nos logs (Railway) qual usuário está listando
+    # conversas e quantas o banco devolve para ele. Compare os logs do
+    # celular vs desktop para detectar contas/backends diferentes.
+    log_event(
+        "conversations_list",
+        level="INFO",
+        user_id=user.id,
+        user_email=user.email,
+        total=total,
+    )
     
     # Paginated and optimized query with eager loading
     conversations = (
